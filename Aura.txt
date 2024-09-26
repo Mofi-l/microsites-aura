@@ -15,19 +15,26 @@
     'use strict';
 
     const currentVersion = '1.0';
-    const updateUrl = 'https://my-aux-data-bucket.s3.amazonaws.com/Aura.txt';
+    const apiUrl = 'https://api.github.com/repos/Mofi-l/get-aura-updates/contents/Aura.txt';
+    const githubToken = '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';
 
     // Function to check for updates
     function checkForUpdates() {
         GM.xmlHttpRequest({
             method: 'GET',
-            url: updateUrl,
+            url: apiUrl,
+            headers: {
+                'Authorization': 'token ' + githubToken,
+                'Accept': 'application/vnd.github.v3.raw'
+            },
             onload: function(response) {
                 if (response.status === 200) {
                     const latestVersion = response.responseText.trim();
                     if (latestVersion !== currentVersion) {
                         notifyUpdate(latestVersion);
                     }
+                } else {
+                    console.error('Failed to check for updates. Status:', response.status);
                 }
             },
             onerror: function() {
@@ -43,8 +50,7 @@
             text: `A new version (${latestVersion}) is available!`,
             timeout: 5000,
             onclick: function() {
-                // You can redirect users to a specific URL or reload the page if needed
-                window.location.href = 'https://my-aux-data-bucket.s3.amazonaws.com';
+                window.location.href = 'https://github.com/Mofi-l/get-aura-updates';
             }
         });
     }
