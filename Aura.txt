@@ -6,7 +6,7 @@
 // @include      /^https:\/\/paragon-(na|eu|fe|cn|na-preprod|cn-preprod)\.amazon\.com\/hz\/(lobby(\/v2)?|view-case|create-case|dox-search|search|case|view-case\?caseId=.*|case\?caseId=.*&paramountDebug=1|view-case\?workItemRegion=na&caseId=.*|dox-search\?searchQuery=owner:.*&contentType=CASE&sortField=creationDate&sortOrder=desc)$/
 // @downloadURL  https://drive.corp.amazon.com/documents/mofila@/Microsite%20Automated%20NPT/Microsite%20NPT%20Prod/Aura%201.0-1.0.user.js
 // @updateURL	 https://drive.corp.amazon.com/documents/mofila@/Microsite%20Automated%20NPT/Microsite%20NPT%20Prod/Aura%201.0-1.0.user.js
-// @version      1.0
+// @version      1.1
 // @grant        GM_notification
 // @grant        GM_xmlhttpRequest
 // ==/UserScript==
