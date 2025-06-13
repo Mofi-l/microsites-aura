@@ -1,0 +1,4518 @@
+<head>
+    <title>Aura</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(45deg, #0b1120, #1a2433);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Animated gradient background */
+        .gradient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: linear-gradient(
+                125deg,
+                #2c3e50,
+                #3498db,
+                #2980b9,
+                #2c3e50
+            );
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        /* Floating particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 20s infinite;
+        }
+
+        /* Glass morphism overlay */
+        .glass-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            z-index: -1;
+        }
+
+        /* Animated lines */
+        .lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        .line {
+            position: absolute;
+            width: 1px;
+            height: 100%;
+            top: 0;
+            left: 50%;
+            background: linear-gradient(
+                to bottom,
+                transparent,
+                rgba(255, 255, 255, 0.1),
+                transparent
+            );
+            animation: lineDrift 10s infinite;
+        }
+
+        /* Animations */
+        @keyframes gradientBG {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) translateX(0);
+            }
+            25% {
+                transform: translateY(-100px) translateX(50px);
+  
+            }
+            50% {
+                transform: translateY(-50px) translateX(100px);
+            }
+            75% {
+                transform: translateY(-75px) translateX(25px);
+            }
+        }
+
+        @keyframes lineDrift {
+            0%, 100% {
+                transform: translateX(0);
+            }
+            50% {
+                transform: translateX(100px);
+            }
+        }
+
+        /* Add particles dynamically with JavaScript */
+        <script>
+(function() {
+    'use strict';
+
+const currentVersion = "2.4";
+
+let animationFrameId = null;
+let timerUpdateDebounce = null;
+let isInitialLoad = true;
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        isInitialLoad = false;
+    }, 1000);
+});
+///////////////////////////////////////////////////////////////
+//Check for Updates, alerts and Clear Local storage
+let isTabFocused = true;
+let alertShown = false;
+window.addEventListener('focus', () => {
+    isTabFocused = true;
+});
+
+window.addEventListener('blur', () => {
+    isTabFocused = false;
+});
+
+    const targetURLs = [
+        'https://paragon-na.amazon.com/hz/lobby',
+        'https://paragon-na.amazon.com/hz/lobby/v2',
+        'https://paragon-eu.amazon.com/hz/lobby',
+        'https://paragon-eu.amazon.com/hz/lobby/v2',
+        'https://paragon-fe.amazon.com/hz/lobby',
+        'https://paragon-fe.amazon.com/hz/lobby/v2'
+    ];
+
+    const quipURL = 'https://quip-amazon.com/SorbAX3qnZvC/Project-Details-Update#temp:C:RGH800d94e49f23497b8bb918219';
+
+    if (targetURLs.includes(window.location.href)) {
+        const alreadyOpened = localStorage.getItem('quipLinkOpened');
+        const confirmationShown = sessionStorage.getItem('quipConfirmationShown');
+
+    if (!alreadyOpened && !confirmationShown) {
+        showCustomConfirm('Please click "Yes" to update the project details for today without fail.', (userConfirmed) => {
+            if (userConfirmed) {
+                window.open(quipURL, '_blank');
+                localStorage.setItem('quipLinkOpened', 'true');
+            }
+            sessionStorage.setItem('quipConfirmationShown', 'true');
+        });
+    }
+}
+
+function clearLocalStorageIfNeeded() {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const todayDate = now.toISOString().split('T')[0];
+
+    const lastClearedDate = localStorage.getItem('lastClearedDate');
+
+    if (!lastClearedDate || (lastClearedDate !== todayDate && currentHour >= 5)) {
+        const lastCleared = new Date(lastClearedDate);
+
+        if (!lastClearedDate || (now - lastCleared > 24 * 60 * 60 * 1000)) {
+            localStorage.clear();
+            localStorage.setItem('lastClearedDate', todayDate);
+            console.log('Local storage cleared.');
+        }
+    }
+
+    if (lastClearedDate !== todayDate) {
+        localStorage.removeItem('loggedBefore12');
+    }
+}
+
+clearLocalStorageIfNeeded();
+
+function showCustomAlert(message) {
+    const styles = document.createElement('style');
+    styles.textContent = `
+        .custom-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 10002;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+            animation: overlayFadeIn 0.3s ease-out;
+        }
+
+        .custom-alert-box {
+            background: linear-gradient(145deg, #2a2a2a, #323232);
+            border-radius: 16px;
+            padding: 25px 35px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3),
+                        0 1px 8px rgba(0, 0, 0, 0.2),
+                        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .custom-message {
+            margin-bottom: 25px;
+            font-size: 1.1rem;
+            line-height: 1.5;
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .custom-button {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            margin: 0 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .custom-button::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .custom-button:hover::after {
+            opacity: 1;
+        }
+
+        .custom-button.primary {
+            background: linear-gradient(135deg, #4CAF50, #43A047);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            color: white;
+        }
+
+        .custom-button.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .custom-button.primary:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .custom-button.danger {
+            background: linear-gradient(135deg, #FF5252, #D32F2F);
+            box-shadow: 0 4px 15px rgba(255, 82, 82, 0.3);
+            color: white;
+        }
+
+        .custom-button.danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 82, 82, 0.4);
+        }
+
+        .custom-button.danger:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(255, 82, 82, 0.3);
+        }
+
+        @keyframes overlayFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .custom-alert-box {
+                width: 85%;
+                padding: 20px 25px;
+                margin: 20px;
+            }
+
+            .custom-button {
+                padding: 10px 20px;
+                min-width: 80px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .custom-overlay,
+            .custom-alert-box,
+            .custom-button {
+                animation: none;
+                transition: opacity 0.1s ease-in-out;
+            }
+        }
+    `;
+    document.head.appendChild(styles);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-overlay';
+
+    const alertBox = document.createElement('div');
+    alertBox.className = 'custom-alert-box';
+
+    const alertMessage = document.createElement('p');
+    alertMessage.className = 'custom-message';
+    alertMessage.textContent = message;
+
+    const okButton = document.createElement('button');
+    okButton.textContent = 'Got it!';
+    okButton.className = 'custom-button primary';
+
+    okButton.addEventListener('click', () => {
+        document.body.removeChild(overlay);
+    });
+
+    alertBox.appendChild(alertMessage);
+    alertBox.appendChild(okButton);
+    overlay.appendChild(alertBox);
+    document.body.appendChild(overlay);
+}
+
+function showCustomConfirm(message, callback) {
+    const styles = document.createElement('style');
+    styles.textContent = `
+        .custom-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+            animation: overlayFadeIn 0.3s ease-out;
+        }
+
+        .custom-alert-box {
+            background: linear-gradient(145deg, #2a2a2a, #323232);
+            border-radius: 16px;
+            padding: 25px 35px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3),
+                        0 1px 8px rgba(0, 0, 0, 0.2),
+                        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .custom-message {
+            margin-bottom: 25px;
+            font-size: 1.1rem;
+            line-height: 1.5;
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .custom-button {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            margin: 0 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .custom-button::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .custom-button:hover::after {
+            opacity: 1;
+        }
+
+        .custom-button.primary {
+            background: linear-gradient(135deg, #4CAF50, #43A047);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            color: white;
+        }
+
+        .custom-button.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .custom-button.primary:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .custom-button.danger {
+            background: linear-gradient(135deg, #FF5252, #D32F2F);
+            box-shadow: 0 4px 15px rgba(255, 82, 82, 0.3);
+            color: white;
+        }
+
+        .custom-button.danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 82, 82, 0.4);
+        }
+
+        .custom-button.danger:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(255, 82, 82, 0.3);
+        }
+
+        @keyframes overlayFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .custom-alert-box {
+                width: 85%;
+                padding: 20px 25px;
+                margin: 20px;
+            }
+
+            .custom-button {
+                padding: 10px 20px;
+                min-width: 80px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .custom-overlay,
+            .custom-alert-box,
+            .custom-button {
+                animation: none;
+                transition: opacity 0.1s ease-in-out;
+            }
+        }
+    `;
+    document.head.appendChild(styles);
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-overlay';
+
+    const confirmBox = document.createElement('div');
+    confirmBox.className = 'custom-alert-box';
+
+    const confirmMessage = document.createElement('p');
+    confirmMessage.className = 'custom-message';
+    confirmMessage.textContent = message;
+
+    const yesButton = document.createElement('button');
+    yesButton.textContent = 'Yes';
+    yesButton.className = 'custom-button primary';
+
+    const noButton = document.createElement('button');
+    noButton.textContent = 'No';
+    noButton.className = 'custom-button danger';
+
+    yesButton.addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        callback(true);
+    });
+
+    noButton.addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        callback(false);
+    });
+
+    confirmBox.appendChild(confirmMessage);
+    confirmBox.appendChild(yesButton);
+    confirmBox.appendChild(noButton);
+    overlay.appendChild(confirmBox);
+    document.body.appendChild(overlay);
+}
+///////////////////////////////////////////////////////////////
+//Save and Display AUX data//
+// Function to save AUX data to localStorage
+function saveAUXData(entry) {
+    const auxData = JSON.parse(localStorage.getItem('auxData')) || [];
+    const username = entry.username || localStorage.getItem("currentUsername");
+
+    if (!username) {
+        console.error("Username is missing. Data cannot be saved.");
+        return;
+    }
+
+    const timeSpentInSeconds = entry.timeSpent / 1000;
+
+    function saveUniqueValue(key, value) {
+        let storedValues = JSON.parse(localStorage.getItem(key)) || [];
+        if (value && !storedValues.includes(value)) {
+            storedValues.push(value);
+            localStorage.setItem(key, JSON.stringify(storedValues));
+        }
+    }
+
+    function updateEntry(entryToUpdate, key, newValue) {
+        if (newValue) {
+            if (key === 'relatedAudits') {
+                entryToUpdate[key] = newValue;
+            } else {
+                entryToUpdate[key] = entryToUpdate[key] || [];
+                if (!entryToUpdate[key].includes(newValue)) {
+                    entryToUpdate[key].push(newValue);
+                }
+            }
+        }
+    }
+
+    const lastEntry = auxData.length > 0 ? auxData[auxData.length - 1] : null;
+
+    if (lastEntry &&
+        lastEntry.auxLabel === entry.auxLabel &&
+        lastEntry.username === username &&
+        Math.abs(new Date(lastEntry.date).getTime() - new Date(entry.date).getTime()) < 500) {
+        console.log('Skipping duplicate entry within 500ms window');
+        return;
+    }
+
+    const wasPreviousConductProject = lastEntry &&
+        lastEntry.auxLabel.toLowerCase().includes('conduct project');
+
+    if (entry.relatedAudits && wasPreviousConductProject &&
+        !entry.auxLabel.toLowerCase().includes('conduct project')) {
+        if (lastEntry) {
+            lastEntry.relatedAudits = entry.relatedAudits;
+            auxData[auxData.length - 1] = lastEntry;
+        }
+        entry.relatedAudits = null;
+    }
+
+    if (entry.auxLabel === "Offline - N/A - N/A") {
+        if (!auxData.some(item => item.auxLabel === "Offline - N/A - N/A")) {
+            const uniqueId = `${username}-${entry.date}-${entry.auxLabel}-${Math.random().toString(36).substr(2, 9)}`;
+
+            saveUniqueValue('relatedAudits', entry.relatedAudits);
+
+            const newEntry = {
+                uniqueId,
+                date: entry.date,
+                username,
+                auxLabel: entry.auxLabel,
+                timeSpent: entry.timeSpent,
+                projectTitle: entry.projectTitle || localStorage.getItem('projectTitle-' + entry.auxLabel),
+                relatedAudits: entry.relatedAudits,
+                areYouPL: entry.areYouPL || localStorage.getItem('areYouPL-' + entry.auxLabel),
+                comment: entry.comment || localStorage.getItem('comment-' + entry.auxLabel),
+            };
+
+            auxData.push(newEntry);
+            localStorage.setItem('auxData', JSON.stringify(auxData));
+            console.log('Offline entry saved:', newEntry);
+        }
+    } else if (timeSpentInSeconds > 5) {
+        const uniqueId = `${username}-${entry.date}-${entry.auxLabel}-${Math.random().toString(36).substr(2, 9)}`;
+
+        saveUniqueValue('relatedAudits', entry.relatedAudits);
+
+        const newEntry = {
+            uniqueId,
+            date: entry.date,
+            username,
+            auxLabel: entry.auxLabel,
+            timeSpent: entry.timeSpent,
+            projectTitle: entry.projectTitle || localStorage.getItem('projectTitle-' + entry.auxLabel),
+            relatedAudits: entry.relatedAudits,
+            areYouPL: entry.areYouPL || localStorage.getItem('areYouPL-' + entry.auxLabel),
+            comment: entry.comment || localStorage.getItem('comment-' + entry.auxLabel),
+        };
+
+        auxData.push(newEntry);
+        localStorage.setItem('auxData', JSON.stringify(auxData));
+        console.log('AUX Data saved:', newEntry);
+    } else {
+        console.log('Time spent is less than 5 seconds. Skipping entry.');
+    }
+
+    displayAUXData(false);
+}
+
+// Function to display AUX data in a table
+function displayAUXData(showTable = false) {
+    let popupContainer = document.getElementById('auxTablePopup');
+
+    if (!popupContainer) {
+        popupContainer = document.createElement('div');
+        popupContainer.id = 'auxTablePopup';
+        popupContainer.style.position = 'fixed';
+        popupContainer.style.top = '50%';
+        popupContainer.style.left = '50%';
+        popupContainer.style.transform = 'translate(-50%, -50%)';
+        popupContainer.style.backgroundColor = '#fff';
+        popupContainer.style.border = '1px solid #ccc';
+        popupContainer.style.padding = '20px';
+        popupContainer.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+        popupContainer.style.zIndex = '1000';
+        popupContainer.style.maxWidth = '90%';
+        popupContainer.style.maxHeight = '80vh';
+        popupContainer.style.overflow = 'auto';
+        document.body.appendChild(popupContainer);
+    }
+
+    let auxData = JSON.parse(localStorage.getItem('auxData')) || [];
+    const restoreTimestamp = localStorage.getItem('lastRestoreTimestamp');
+
+    auxData = auxData.filter(entry => {
+        const entryDate = new Date(entry.date).getTime();
+        const entryTime = new Date(entry.date).toTimeString().split(' ')[0];
+
+        if (restoreTimestamp) {
+            if (entry.auxLabel === 'Late Login' &&
+                entryTime === '00:00:00' &&
+                entryDate >= restoreTimestamp) {
+                return false;
+            }
+        }
+        return true;
+    });
+
+    auxData = auxData.filter(entry =>
+        entry.auxLabel !== 'undefined - N/A - N/A' &&
+        entry.date !== undefined
+    );
+
+    if (auxData.length === 0) {
+        popupContainer.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                No AUX Data available. Please refresh the page or view from a different page.
+            </div>`;
+        if (showTable) {
+            popupContainer.style.display = 'block';
+        }
+        return;
+    }
+
+    const controlPanel = document.createElement('div');
+    controlPanel.style.marginBottom = '15px';
+    controlPanel.style.display = 'flex';
+    controlPanel.style.justifyContent = 'space-between';
+    controlPanel.style.alignItems = 'center';
+
+    const editButton = document.createElement('button');
+    editButton.textContent = 'Enable Editing';
+    editButton.style.padding = '8px 16px';
+    editButton.style.backgroundColor = '#007bff';
+    editButton.style.color = 'white';
+    editButton.style.border = 'none';
+    editButton.style.borderRadius = '4px';
+    editButton.style.cursor = 'pointer';
+    editButton.style.marginRight = '10px';
+
+    const saveButton = document.createElement('button');
+    saveButton.textContent = 'Save All Changes';
+    saveButton.style.padding = '8px 16px';
+    saveButton.style.backgroundColor = '#28a745';
+    saveButton.style.color = 'white';
+    saveButton.style.border = 'none';
+    saveButton.style.borderRadius = '4px';
+    saveButton.style.cursor = 'pointer';
+    saveButton.style.display = 'none';
+
+    let isEditing = false;
+
+    const tableContainer = document.createElement('div');
+    tableContainer.style.overflowX = 'auto';
+    tableContainer.style.width = '100%';
+
+    const table = document.createElement('table');
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    table.style.marginTop = '10px';
+    table.style.backgroundColor = '#ffffff';
+
+    const headers = [
+        'Date',
+        'Username',
+        'AUX Label',
+        'Time Spent',
+        'Project Title',
+        'Related Audits',
+        'Are You PL',
+        'Comment'
+    ];
+
+    const headerRow = table.insertRow();
+    headers.forEach(headerText => {
+        const header = document.createElement('th');
+        header.textContent = headerText;
+        header.style.padding = '12px';
+        header.style.backgroundColor = '#f8f9fa';
+        header.style.borderBottom = '2px solid #dee2e6';
+        header.style.color = '#495057';
+        header.style.fontWeight = 'bold';
+        header.style.textAlign = 'left';
+        headerRow.appendChild(header);
+    });
+
+    function toggleEditMode() {
+        isEditing = !isEditing;
+        editButton.textContent = isEditing ? 'Disable Editing' : 'Enable Editing';
+        editButton.style.backgroundColor = isEditing ? '#dc3545' : '#007bff';
+        saveButton.style.display = isEditing ? 'block' : 'none';
+
+        const inputs = table.getElementsByTagName('input');
+        for (let input of inputs) {
+            input.readOnly = !isEditing;
+            input.style.backgroundColor = isEditing ? '#ffffff' : '#f8f9fa';
+            input.style.border = isEditing ? '1px solid #ced4da' : 'none';
+        }
+    }
+
+    editButton.onclick = toggleEditMode;
+    saveButton.onclick = () => saveAllChanges(table, auxData);
+
+    auxData.forEach((entry, index) => {
+        const row = table.insertRow();
+        row.style.borderBottom = '1px solid #dee2e6';
+
+        headers.forEach(header => {
+            const cell = row.insertCell();
+            cell.style.padding = '12px';
+
+            const key = header.toLowerCase()
+                .replace(/ /g, '')
+                .replace('areyoupl', 'areYouPL')
+                .replace('auxlabel', 'auxLabel')
+                .replace('relatedaudits', 'relatedAudits')
+                .replace('timespent', 'timeSpent')
+                .replace('projecttitle', 'projectTitle');
+
+            if (key === 'date' || key === 'username') {
+                cell.textContent = entry[key] || 'N/A';
+            } else {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = key === 'timeSpent' ?
+                    formatTime(entry[key] || 0) :
+                    (entry[key] || '');
+                input.readOnly = true;
+                input.style.width = '100%';
+                input.style.padding = '6px';
+                input.style.border = 'none';
+                input.style.backgroundColor = '#f8f9fa';
+                input.style.borderRadius = '4px';
+                input.style.boxSizing = 'border-box';
+                cell.appendChild(input);
+            }
+        });
+    });
+
+    popupContainer.innerHTML = '';
+
+    const closeButton = document.createElement('button');
+    closeButton.textContent = '×';
+    closeButton.style.position = 'absolute';
+    closeButton.style.right = '10px';
+    closeButton.style.top = '10px';
+    closeButton.style.border = 'none';
+    closeButton.style.background = 'none';
+    closeButton.style.fontSize = '20px';
+    closeButton.style.cursor = 'pointer';
+    closeButton.onclick = () => {
+    popupContainer.style.display = 'none';
+    };
+
+    if (localStorage.getItem('dataModified') === 'true') {
+        const modifiedIndicator = document.createElement('div');
+        modifiedIndicator.style.color = '#ff9800';
+        modifiedIndicator.style.padding = '10px';
+        modifiedIndicator.style.marginBottom = '10px';
+        modifiedIndicator.style.backgroundColor = '#fff3e0';
+        modifiedIndicator.style.borderRadius = '4px';
+        modifiedIndicator.textContent = '* This data contains manual modifications';
+        popupContainer.appendChild(modifiedIndicator);
+    }
+
+    controlPanel.appendChild(editButton);
+    controlPanel.appendChild(saveButton);
+    popupContainer.appendChild(closeButton);
+    popupContainer.appendChild(controlPanel);
+    tableContainer.appendChild(table);
+    popupContainer.appendChild(tableContainer);
+
+    if (showTable) {
+        popupContainer.style.display = 'block';
+    } else {
+        popupContainer.style.display = 'none';
+    }
+}
+
+function saveAllChanges(table, auxData) {
+    showCustomConfirm('Are you sure you want to save all changes?', (confirmed) => {
+        if (confirmed) {
+            try {
+                const rows = Array.from(table.rows).slice(1);
+                rows.forEach((row, index) => {
+                    const cells = row.cells;
+                    const updatedEntry = { ...auxData[index] };
+
+                    const timeInput = cells[3].querySelector('input').value;
+                    if (!/^\d{2}:\d{2}:\d{2}$/.test(timeInput)) {
+                        throw new Error(`Invalid time format in row ${index + 1}. Please use HH:MM:SS`);
+                    }
+
+                    updatedEntry.lastModified = new Date().toISOString();
+                    updatedEntry.auxLabel = cells[2].querySelector('input').value;
+                    updatedEntry.timeSpent = parseTimeToMilliseconds(timeInput);
+                    updatedEntry.projectTitle = cells[4].querySelector('input').value;
+                    updatedEntry.relatedAudits = cells[5].querySelector('input').value;
+                    updatedEntry.areYouPL = cells[6].querySelector('input').value;
+                    updatedEntry.comment = cells[7].querySelector('input').value;
+
+                    auxData[index] = updatedEntry;
+                });
+
+                localStorage.setItem('auxData', JSON.stringify(auxData));
+                localStorage.setItem('dataModified', 'true');
+
+                showCustomAlert('All changes saved successfully!');
+                displayAUXData(true);
+            } catch (error) {
+                showCustomAlert(error.message);
+            }
+        }
+    });
+}
+
+// Helper function to parse time to milliseconds
+function parseTimeToMilliseconds(timeString) {
+    const [hours, minutes, seconds] = timeString.split(':').map(Number);
+    return ((hours * 60 * 60) + (minutes * 60) + seconds) * 1000;
+}
+
+//Function to save current selection
+function saveCurrentSelections() {
+  const l1 = document.getElementById('aux-l1')?.value || '';
+  const l2 = document.getElementById('aux-l2')?.value || '';
+  const l3 = document.getElementById('aux-l3')?.value || '';
+
+  localStorage.setItem('currentSelections', JSON.stringify({
+    l1, l2, l3
+  }));
+}
+
+//Function to restore the selections
+function restoreSelections() {
+  const saved = localStorage.getItem('currentSelections');
+  if (saved) {
+    try {
+      const {l1, l2, l3} = JSON.parse(saved);
+
+      // Set L1
+      const l1Select = document.getElementById('aux-l1');
+      if (l1Select && l1) {
+        l1Select.value = l1;
+        l1Select.dispatchEvent(new Event('change'));
+
+        // Wait for L2 options to be populated
+        setTimeout(() => {
+          const l2Select = document.getElementById('aux-l2');
+          if (l2Select && l2) {
+            l2Select.value = l2;
+            l2Select.dispatchEvent(new Event('change'));
+
+            // Wait for L3 options to be populated
+            setTimeout(() => {
+              const l3Select = document.getElementById('aux-l3');
+              if (l3Select && l3) {
+                l3Select.value = l3;
+                l3Select.dispatchEvent(new Event('change'));
+              }
+            }, 100);
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error restoring selections:', error);
+    }
+  }
+}
+
+///////////////////////////////////////////////////////////////
+//Front End CSV option//
+function restoreFromCSV(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        console.error('No file selected');
+        return;
+    }
+
+    const existingAuxDataString = localStorage.getItem('auxData');
+    let existingAuxData = existingAuxDataString ? JSON.parse(existingAuxDataString) : [];
+
+    existingAuxData = existingAuxData.filter(entry => entry.auxLabel !== 'Late Login');
+    localStorage.setItem('auxData', JSON.stringify(existingAuxData));
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const contents = e.target.result;
+        const lines = contents.split('\n').slice(1);
+        const restoredAuxData = lines.map(line => {
+            const [
+                date,
+                username,
+                auxLabel,
+                timeSpent,
+                projectTitle,
+                relatedAudits,
+                areYouPL,
+                comment
+            ] = line.split(',');
+
+            if (!timeSpent || timeSpent === "undefined") {
+                console.error('Invalid timeSpent value:', timeSpent);
+                return null;
+            }
+
+            return {
+                date,
+                username,
+                auxLabel,
+                timeSpent: parseTime(timeSpent),
+                projectTitle,
+                relatedAudits,
+                areYouPL,
+                comment,
+                isRestored: true
+            };
+        }).filter(entry => entry && entry.date);
+
+        const combinedAuxData = [...existingAuxData, ...restoredAuxData];
+
+        localStorage.setItem('auxData', JSON.stringify(combinedAuxData));
+        localStorage.setItem('lastRestoreTimestamp', Date.now());
+
+        console.log('AUX Data merged and restored to localStorage:', combinedAuxData);
+        showCustomAlert('AUX Data restored and merged');
+        localStorage.removeItem('manualAUXChange');
+    };
+
+    reader.onerror = function() {
+        console.error('Error reading file:', reader.error);
+    };
+
+    reader.readAsText(file);
+}
+
+function exportToCSV() {
+    try {
+        let auxDataString = localStorage.getItem('auxData');
+        let auxData = JSON.parse(auxDataString) || [];
+        console.log('AUX Data from localStorage (Parsed):', auxData);
+
+        const restoreTimestamp = localStorage.getItem('lastRestoreTimestamp');
+
+        auxData = auxData.filter(entry => {
+            const entryDate = new Date(entry.date).getTime();
+            if (restoreTimestamp) {
+                if (entry.auxLabel === 'Late Login' && entryDate >= restoreTimestamp) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        auxData = auxData.filter(entry => entry.auxLabel !== 'undefined - N/A - N/A' && entry.date !== undefined);
+
+        const csvContent = "data:text/csv;charset=utf-8," +
+            "Date,Username,AUX Label,Time Spent,Project Title,Related Audits,Are You the PL?,Comment\n" +
+            auxData.map(entry => {
+                const username = entry.username || "Unknown User";
+                return `${entry.date},${username},${entry.auxLabel},${formatTime(entry.timeSpent)},${entry.projectTitle},${entry.relatedAudits},${entry.areYouPL ? `"${entry.areYouPL}"` : ""},${entry.comment ? `"${entry.comment}"` : ""}`;
+            }).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'aux_data.csv');
+        document.body.appendChild(link);
+
+        link.click();
+    } catch (error) {
+        console.error('Error exporting AUX data to CSV:', error);
+    }
+}
+///////////////////////////////////////////////////////////////
+function injectAuthStyles() {
+    const authStyles = document.createElement('style');
+    authStyles.textContent = `
+    .auth-modal {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.85);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10002;
+        backdrop-filter: blur(12px);
+        animation: overlayFadeIn 0.3s ease-out;
+    }
+
+    .auth-modal-content {
+        background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
+        padding: 35px;
+        border-radius: 20px;
+        width: min(90%, 420px);
+        text-align: center;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4),
+                    0 0 0 1px rgba(255, 255, 255, 0.1);
+        animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .auth-modal-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: #ffffff;
+        margin-bottom: 30px;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .auth-input-container {
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    .auth-input {
+        width: 100%;
+        padding: 14px 18px;
+        padding-right: 45px;
+        background: rgba(40, 40, 40, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        font-size: 15px;
+        color: #ffffff;
+        transition: all 0.2s ease;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+
+    .auth-input:hover {
+        background: rgba(45, 45, 45, 0.95);
+    }
+
+    .auth-input:focus {
+        outline: none;
+        border-color: #6c7bff;
+        background: rgba(50, 50, 50, 0.95);
+        box-shadow: 0 0 0 3px rgba(108, 123, 255, 0.1);
+    }
+
+    .auth-input::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+    }
+
+    .auth-input[type="password"] {
+        color: #ffffff;
+    }
+
+    .auth-button-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    .auth-submit-btn,
+    .auth-cancel-btn {
+        padding: 12px 28px;
+        border: none;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .auth-submit-btn {
+        background: linear-gradient(135deg, #5865f2, #818cf8);
+        color: white;
+        box-shadow: 0 6px 18px rgba(88, 101, 242, 0.25);
+    }
+
+    .auth-submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(88, 101, 242, 0.35);
+    }
+
+    .auth-cancel-btn {
+        background: rgba(255, 255, 255, 0.08);
+        color: white;
+        backdrop-filter: blur(4px);
+    }
+
+    .auth-cancel-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .toggle-password-btn {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        padding: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .eye-icon {
+        width: 20px;
+        height: 20px;
+        color: black;
+        transition: fill 0.2s ease;
+    }
+
+    .toggle-password-**************-icon {
+        color: black;
+    }
+
+    @keyframes overlayFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .auth-modal-content {
+            width: 95%;
+            padding: 25px;
+            margin: 20px;
+        }
+
+        .auth-button-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .auth-modal,
+        .auth-modal-content {
+            animation: none;
+        }
+    }
+    `;
+    document.head.appendChild(authStyles);
+}
+
+function loadCognitoSDK() {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/amazon-cognito-identity-js/5.2.1/amazon-cognito-identity.min.js';
+        script.onload = () => {
+            console.log('Amazon Cognito SDK loaded successfully');
+            resolve();
+        };
+        script.onerror = () => {
+            console.warn('Primary SDK load failed. Trying alternate source.');
+            const fallbackScript = document.createElement('script');
+            fallbackScript.src = 'https://unpkg.com/amazon-cognito-identity-js@5.2.1/dist/amazon-cognito-identity.min.js';
+            fallbackScript.onload = () => {
+                console.log('Fallback Amazon Cognito SDK loaded successfully');
+                resolve();
+            };
+            fallbackScript.onerror = () => {
+                console.error('Failed to load Amazon Cognito SDK from all sources');
+                reject(new Error('Failed to load Amazon Cognito SDK'));
+            };
+            document.head.appendChild(fallbackScript);
+        };
+        document.head.appendChild(script);
+    });
+}
+
+const CognitoConfig = {
+    UserPoolId: 'eu-north-1_V9kLPNVXl',
+    ClientId: '68caeoofa7hl7p7pvs65bb2hrv',
+    Region: 'eu-north-1',
+};
+
+async function authenticate(username, password) {
+    const authenticationData = { Username: username, Password: password };
+    const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
+    const poolData = {
+        UserPoolId: CognitoConfig.UserPoolId,
+        ClientId: CognitoConfig.ClientId,
+    };
+    const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+    const userData = { Username: username, Pool: userPool };
+    const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+
+    return new Promise((resolve, reject) => {
+        cognitoUser.authenticateUser(authenticationDetails, {
+            onSuccess: function(result) {
+                const idToken = result.getIdToken().getJwtToken();
+                console.log('Token received:', idToken);
+                resolve(idToken);
+            },
+            onFailure: function(err) {
+                console.error('Authentication failed:', err);
+                reject(err);
+            }
+        });
+    });
+}
+
+async function exportToAWS() {
+    const isDataSent = localStorage.getItem('isDataSent') === 'true';
+
+    if (isDataSent) {
+        showCustomConfirm('Your NPT was already sent, do you want to send a duplicate entry?', (userConfirmed) => {
+            if (!userConfirmed) return;
+            authenticateAndExport();
+        });
+        return;
+    }
+
+    showCustomConfirm('Are you sure you want to export the data to AWS?', (userConfirmed) => {
+        if (!userConfirmed) return;
+        authenticateAndExport();
+    });
+}
+
+async function authenticateAndExport() {
+
+    injectAuthStyles();
+    await loadCognitoSDK();
+
+    const modal = document.createElement('div');
+    modal.innerHTML = `
+    <div class="auth-modal">
+        <div class="auth-modal-content">
+            <h2 class="auth-modal-title">Authentication Required</h2>
+
+            <div class="auth-input-container">
+                <input type="text"
+                    id="username"
+                    class="auth-input"
+                    placeholder="Enter your login"
+                    autocomplete="off">
+            </div>
+
+            <div class="auth-input-container">
+                <input type="password"
+                    id="password"
+                    class="auth-input"
+                    placeholder="Enter your password">
+                <button id="toggle-password" class="toggle-password-btn">
+                    <svg viewBox="0 0 24 24" class="eye-icon">
+                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="auth-button-container">
+                <button id="auth-submit" class="auth-submit-btn">Submit</button>
+                <button id="auth-cancel" class="auth-cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('toggle-password').addEventListener('click', () => {
+        const passwordField = document.getElementById('password');
+        const toggleButton = document.getElementById('toggle-password');
+        const eyeIcon = toggleButton.querySelector('svg');
+
+        if (passwordField.type === 'password') {
+            passwordField.type = 'text';
+            eyeIcon.innerHTML = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>';
+        } else {
+            passwordField.type = 'password';
+            eyeIcon.innerHTML = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
+        }
+    });
+
+    const inputs = modal.querySelectorAll('.auth-input');
+    inputs.forEach(input => {
+        input.addEventListener('focus', () => {
+            input.style.transform = 'translateY(-1px)';
+        });
+        input.addEventListener('blur', () => {
+            input.style.transform = 'translateY(0)';
+        });
+    });
+
+    return new Promise((resolve) => {
+        document.getElementById('auth-submit').addEventListener('click', async () => {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!username || !password) {
+                showCustomAlert('Both username and password are required.');
+                return;
+            }
+
+            const submitBtn = document.getElementById('auth-submit');
+            submitBtn.textContent = 'Authenticating...';
+            submitBtn.style.opacity = '0.7';
+            submitBtn.disabled = true;
+
+            try {
+                const token = await authenticate(username, password);
+                console.log('Retrieved token:', token);
+                const auxDataString = localStorage.getItem('auxData');
+                let auxData = JSON.parse(auxDataString) || [];
+                console.log('AUX Data:', auxData);
+
+                const restoreTimestamp = localStorage.getItem('lastRestoreTimestamp');
+                auxData = auxData.filter(entry => {
+                    const entryDate = new Date(entry.date).getTime();
+                    if (restoreTimestamp) {
+                        if (entry.auxLabel === 'Late Login' && entryDate >= restoreTimestamp) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+
+                auxData = auxData.filter(entry => entry.auxLabel !== 'undefined - N/A - N/A' && entry.date !== undefined);
+
+                const csvContent = 'Date,Username,AUX Label,Time Spent,Project Title,Related Audits,Are You the PL?,Comment\n' +
+                    auxData.map(entry =>
+                        `${entry.date},${entry.username},${entry.auxLabel},${entry.timeSpent},${entry.projectTitle || ''},${entry.relatedAudits || ''},${entry.areYouPL ? `"${entry.areYouPL}"` : ''},${entry.comment ? `"${entry.comment}"` : ''}`
+                    ).join('\n');
+
+                console.log('CSV Content:', csvContent);
+
+                const response = await fetch('https://09umyreyjb.execute-api.eu-north-1.amazonaws.com/Prod/auxData', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/csv',
+                        Authorization: token,
+                    },
+                    body: csvContent,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to send data: ${response.statusText}`);
+                }
+
+                modal.remove();
+                showCustomAlert('NPT Data successfully sent to AWS');
+                localStorage.setItem('isDataSent', 'true');
+            } catch (error) {
+                console.error('Error during AWS export:', error);
+                submitBtn.textContent = 'Submit';
+                submitBtn.style.opacity = '1';
+                submitBtn.disabled = false;
+                showCustomAlert('Failed to export NPT data. Please check your credentials or try again later.');
+            }
+
+            resolve();
+        });
+
+        document.getElementById('auth-cancel').addEventListener('click', () => {
+            const authModal = modal.querySelector('.auth-modal');
+            authModal.style.opacity = '0';
+            setTimeout(() => {
+                modal.remove();
+                resolve();
+            }, 300);
+        });
+    });
+}
+///////////////////////////////////////////////////////////////
+// Import from AWS
+// To get specific user data
+async function selectDateRange() {
+
+    await loadDateRangeStyles();
+
+    return new Promise((resolve, reject) => {
+        const flatpickrCSS = document.createElement('link');
+        flatpickrCSS.rel = 'stylesheet';
+        flatpickrCSS.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
+        document.head.appendChild(flatpickrCSS);
+
+        const flatpickrJS = document.createElement('script');
+        flatpickrJS.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
+        flatpickrJS.onload = () => {
+            const modal = document.createElement('div');
+            modal.className = 'date-range-modal';
+            modal.innerHTML = `
+                <div class="modal-overlay">
+                    <div class="modal-content">
+                        <h2>Select Date Range</h2>
+                        <p>Click and drag to select the date range.</p>
+                        <div id="calendar-container"></div>
+                        <div class="button-container">
+                            <button id="apply-date-range" class="btn-primary">OK</button>
+                            <button id="cancel-date-range" class="btn-secondary">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const calendar = document.getElementById('calendar-container');
+            const flatpickrInstance = flatpickr(calendar, {
+                mode: 'range',
+                dateFormat: 'Y-m-d',
+                inline: true,
+                onClose: (selectedDates) => {
+                    if (selectedDates.length < 2) {
+                        showCustomAlert('Please select a date range.');
+                    }
+                },
+            });
+
+            document.getElementById('apply-date-range').addEventListener('click', () => {
+                const selectedDates = flatpickrInstance.selectedDates;
+                if (selectedDates.length < 2) {
+                    showCustomAlert('Please select a date range.');
+                    return;
+                }
+
+                const startDateTime = selectedDates[0].getTime();
+                const endDateTime = selectedDates[1].getTime();
+
+                modal.classList.add('fade-out');
+                setTimeout(() => {
+                    modal.remove();
+                    flatpickrCSS.remove();
+                }, 300);
+                resolve({ startDateTime, endDateTime });
+            });
+
+            document.getElementById('cancel-date-range').addEventListener('click', () => {
+                modal.classList.add('fade-out');
+                setTimeout(() => {
+                    modal.remove();
+                    flatpickrCSS.remove();
+                }, 300);
+                reject('Date range selection canceled.');
+            });
+
+            setTimeout(() => modal.classList.add('fade-in'), 0);
+        };
+        document.body.appendChild(flatpickrJS);
+    });
+}
+
+// Updated loadDateRangeStyles function
+async function loadDateRangeStyles() {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+        .date-range-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 1000;
+        }
+
+        .date-range-modal.fade-in {
+            opacity: 1;
+        }
+
+        .date-range-modal.fade-out {
+            opacity: 0;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #232f3e;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: auto;
+            max-width: 90%;
+            position: relative;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            color: #ffffff;
+        }
+
+        .modal-content p {
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            color: #999999;
+        }
+
+        #calendar-container {
+            margin-bottom: 20px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn-primary, .btn-secondary {
+            flex: 1;
+            padding: 12px;
+            font-size: 0.875rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #28a745, #218838);
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(90deg, #218838, #1e7e34);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .flatpickr-calendar {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 16px;
+            width: 307px !important;
+        }
+
+        .flatpickr-months {
+            background-color: #ffffff;
+            border-radius: 8px 8px 0 0;
+            padding: 10px 0;
+        }
+
+        .flatpickr-month {
+            color: #000000 !important;
+        }
+
+        .flatpickr-current-month {
+            font-size: 1.1em;
+            padding: 0;
+        }
+
+        .flatpickr-current-month input.cur-year {
+            color: #000000;
+        }
+
+        .flatpickr-monthDropdown-months {
+            color: #000000;
+        }
+
+        .flatpickr-weekdays {
+            background-color: #ffffff;
+            margin-top: 8px;
+        }
+
+        .flatpickr-weekday {
+            color: #232f3e !important;
+            font-weight: 600;
+        }
+
+        .flatpickr-day {
+            border-radius: 6px;
+            color: #333333;
+            margin: 2px;
+            height: 36px;
+            line-height: 36px;
+            width: 36px;
+        }
+
+        .flatpickr-day.selected,
+        .flatpickr-day.startRange,
+        .flatpickr-day.endRange {
+            background-color: #232f3e;
+            border-color: #232f3e;
+            color: #ffffff;
+        }
+
+        .flatpickr-day.inRange {
+            background-color: #e6eaf0;
+            border-color: #e6eaf0;
+            color: #232f3e;
+        }
+
+        .flatpickr-day:hover {
+            background-color: #f5f6f7;
+            border-color: #f5f6f7;
+        }
+
+        .flatpickr-day.today {
+            border-color: #232f3e;
+        }
+
+        .flatpickr-day.today:hover {
+            background-color: #232f3e;
+            color: #ffffff;
+        }
+
+        @media (max-width: 480px) {
+            .modal-content {
+                padding: 16px;
+                width: 95%;
+            }
+
+            .button-container {
+                flex-direction: column;
+            }
+
+            .btn-primary, .btn-secondary {
+                width: 100%;
+            }
+        }
+    `;
+    document.head.appendChild(styleSheet);
+}
+
+function jsonToCsv(jsonData) {
+    const headers = Object.keys(jsonData[0]).join(',');
+    const rows = jsonData.map(row => Object.values(row).join(',')).join('\n');
+    return `${headers}\n${rows}`;
+}
+
+function loadCognitoSdk() {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/amazon-cognito-identity-js/5.2.1/amazon-cognito-identity.min.js';
+        script.onload = () => {
+            console.log('Amazon Cognito SDK loaded successfully');
+            resolve();
+        };
+        script.onerror = () => {
+            console.warn('Primary SDK load failed. Trying alternate source.');
+            const fallbackScript = document.createElement('script');
+            fallbackScript.src = 'https://unpkg.com/amazon-cognito-identity-js@5.2.1/dist/amazon-cognito-identity.min.js';
+            fallbackScript.onload = () => {
+                console.log('Fallback Amazon Cognito SDK loaded successfully');
+                resolve();
+            };
+            fallbackScript.onerror = () => {
+                console.error('Failed to load Amazon Cognito SDK from all sources');
+                reject(new Error('Failed to load Amazon Cognito SDK'));
+            };
+            document.head.appendChild(fallbackScript);
+        };
+        document.head.appendChild(script);
+    });
+}
+
+async function loadAwsSdk() {
+    return new Promise((resolve, reject) => {
+        if (typeof AWS !== 'undefined' && AWS.S3) {
+            console.log('AWS SDK is already loaded and AWS.S3 is available.');
+            resolve();
+        } else {
+            console.log('Loading AWS SDK...');
+            const script = document.createElement('script');
+            script.src = 'https://sdk.amazonaws.com/js/aws-sdk-2.1109.0.min.js';
+            script.onload = () => {
+                console.log('AWS SDK loaded successfully.');
+                if (typeof AWS === 'undefined' || !AWS.S3) {
+                    reject('AWS SDK loaded but AWS.S3 is not available');
+                } else {
+                    resolve();
+                }
+            };
+            script.onerror = (error) => {
+                console.error('Failed to load AWS SDK', error);
+                reject('Failed to load AWS SDK');
+            };
+            document.head.appendChild(script);
+        }
+    });
+}
+
+async function importFromAws() {
+    try {
+        await injectAuthStyles();
+        await loadAwsSdk();
+        await loadCognitoSdk();
+
+        let startDateTime, endDateTime;
+        try {
+            const dateRange = await selectDateRange();
+            startDateTime = dateRange.startDateTime;
+            endDateTime = dateRange.endDateTime;
+        } catch (err) {
+            console.error('Date range selection error:', err);
+            return;
+        }
+
+        const modal = createAuthModal();
+        document.body.appendChild(modal);
+
+        return new Promise((resolve) => {
+            document.getElementById('auth-submit').addEventListener('click', async () => {
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value.trim();
+
+                if (!username || !password) {
+                    showCustomAlert('Both username and password are required.');
+                    return;
+                }
+
+                modal.remove();
+                const loadingIndicator = createLoadingIndicator();
+                document.body.appendChild(loadingIndicator);
+
+                try {
+                    const token = await authenticate(username, password);
+                    AWS.config.update({
+                        region: 'eu-north-1',
+                        credentials: new AWS.CognitoIdentityCredentials({
+                            IdentityPoolId: 'eu-north-1:98c07095-e731-4219-bebe-db4dab892ea8',
+                            Logins: {
+                                'cognito-idp.eu-north-1.amazonaws.com/eu-north-1_V9kLPNVXl': token
+                            }
+                        })
+                    });
+
+                    const s3 = new AWS.S3();
+                    const bucketName = 'aux-data-bucket';
+                    const prefixes = ['Aura_NPT_', 'aux_data_'];
+                    const relevantData = new Set();
+
+                    console.log('Starting data fetch for date range:', {
+                        start: new Date(startDateTime).toISOString(),
+                        end: new Date(endDateTime).toISOString()
+                    });
+
+                    for (const prefix of prefixes) {
+                        try {
+                            const listedObjects = await s3.listObjectsV2({
+                                Bucket: bucketName,
+                                Prefix: prefix
+                            }).promise();
+
+                            console.log(`Found ${listedObjects.Contents.length} files with prefix ${prefix}`);
+
+                            for (const item of listedObjects.Contents) {
+                                try {
+                                    const fileData = await s3.getObject({
+                                        Bucket: bucketName,
+                                        Key: item.Key
+                                    }).promise();
+
+                                    const fileContent = fileData.Body.toString('utf-8');
+                                    const rows = fileContent.split(/\r?\n/).filter(row => row.trim());
+
+                                    for (let i = 1; i < rows.length; i++) {
+                                        const row = rows[i];
+                                        const columns = row.split(',').map(col => col.trim());
+
+                                        if (columns.length >= 4) {
+                                            const [date, rowUsername, auxLabel, timeSpent, ...rest] = columns;
+
+                                            try {
+                                                const rowDate = new Date(date).getTime();
+
+                                                if (rowDate >= startDateTime &&
+                                                    rowDate <= endDateTime &&
+                                                    rowUsername === username) {
+
+                                                    let processedTimeSpent = timeSpent;
+                                                       if (timeSpent && !timeSpent.includes(':')) {
+                                                        const minutes = parseFloat(timeSpent);
+                                                        if (!isNaN(minutes) && minutes > 0) {
+                                                            const hours = Math.floor(minutes / 60);
+                                                            const mins = Math.floor(minutes % 60);
+                                                            const secs = Math.floor((minutes * 60) % 60);
+                                                            processedTimeSpent = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                                                        }
+                                                    }
+
+                                                    const processedRow = [date, rowUsername, auxLabel, processedTimeSpent, ...rest].join(',');
+                                                    relevantData.add(processedRow);
+                                                }
+                                            } catch (dateError) {
+                                                console.error('Error processing date for row:', row, dateError);
+                                                continue;
+                                            }
+                                        }
+                                       }
+                                } catch (fileError) {
+                                    console.error(`Error processing file ${item.Key}:`, fileError);
+                                    continue;
+                                }
+                            }
+                        } catch (prefixError) {
+                            console.error(`Error processing prefix ${prefix}:`, prefixError);
+                            continue;
+                        }
+                    }
+
+                    const uniqueData = Array.from(relevantData);
+
+                    if (uniqueData.length === 0) {
+                        showCustomAlert('No data found for the selected date range.');
+                        document.body.removeChild(loadingIndicator);
+                        return;
+                    }
+
+                    const csvContent = `Date,Username,AUX Label,Time Spent,Project Title,Related Audits,Are You the PL?,Comment,Site\n${uniqueData.join('\n')}`;
+                    const blob = new Blob([csvContent], { type: 'text/csvcsv' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+
+                    const startDateFormatted = new Date(startDateTime).toISOString().split('T')[0];
+                    const endDateFormatted = new Date(endDateTime).toISOString().split('T')[0];
+                    link.download = `${username}_imported_data_${startDateFormatted}_to_${endDateFormatted}.csv`;
+
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+
+                    showCustomAlert('Data successfully imported and downloaded!');
+
+                } catch (error) {
+                    console.error('Error during import:', error);
+                    showCustomAlert('Failed to import data. Please try again.');
+                } finally {
+                    if (document.body.contains(loadingIndicator)) {
+                        document.body.removeChild(loadingIndicator);
+                    }
+                }
+                resolve();
+            });
+
+            document.getElementById('auth-cancel').addEventListener('click', () => {
+                modal.remove();
+                resolve();
+            });
+        });
+    } catch (error) {
+        console.error('Error in importFromAws:', error);
+        showCustomAlert('Failed to initialize import process.');
+    }
+}
+
+function createLoadingIndicator() {
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'loading-indicator';
+    loadingIndicator.innerHTML = `
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Importing data...</div>
+    `;
+
+    const style = document.createElement('style');
+    style.textContent = `
+        .loading-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 14px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
+
+    return loadingIndicator;
+}
+
+function createAuthModal() {
+    const modal = document.createElement('div');
+    modal.innerHTML = `
+        <div class="auth-modal">
+            <div class="auth-modal-content">
+                <h2 class="auth-modal-title">Authentication Required</h2>
+                <div class="auth-input-container">
+                    <input type="text"
+                        id="username"
+                        class="auth-input"
+                        placeholder="Enter your login"
+                        autocomplete="off">
+                </div>
+                <div class="auth-input-container">
+                    <input type="password"
+                        id="password"
+                        class="auth-input"
+                        placeholder="Enter your password">
+                    <button id="toggle-password" class="toggle-password-btn">
+                        <svg viewBox="0 0 24 24" class="eye-icon">
+                            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="auth-button-container">
+                    <button id="auth-submit" class="auth-submit-btn">Submit</button>
+                    <button id="auth-cancel" class="auth-cancel-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    modal.querySelector('#toggle-password').addEventListener('click', () => {
+        const passwordField = modal.querySelector('#password');
+        const eyeIcon = modal.querySelector('.eye-icon');
+
+        if (passwordField.type === 'password') {
+            passwordField.type = 'text';
+            eyeIcon.innerHTML = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>';
+        } else {
+            passwordField.type = 'password';
+            eyeIcon.innerHTML = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
+        }
+    });
+
+    return modal;
+}
+
+// To get entire user data
+async function checkAuthorization(username) {
+    try {
+        // Create and append script element
+        const script = document.createElement('script');
+        script.src = 'https://mofi-l.github.io/aux-auth-config/auth-config.js';
+
+        // Wait for the script to load
+        await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+
+        // Check authorization
+        const isAuthorized = window.AUTH_CONFIG.authorizedUsers.includes(username);
+
+        // Cleanup
+        document.head.removeChild(script);
+        delete window.AUTH_CONFIG;
+
+        return isAuthorized;
+    } catch (error) {
+        console.error('Authorization check failed:', error);
+        return false;
+    }
+}
+
+async function getFullData() {
+    const currentUsername = localStorage.getItem("currentUsername");
+
+    try {
+        const isAuthorized = await checkAuthorization(currentUsername);
+
+        if (!isAuthorized) {
+            showCustomAlert("You don't have permission to download full data");
+            return;
+        }
+
+        await injectAuthStyles();
+        await loadAwsSdk();
+        await loadCognitoSdk();
+
+        let dateRange;
+        try {
+            dateRange = await selectDateRange();
+        } catch (err) {
+            console.error('Date range selection error:', err);
+            return;
+        }
+
+        const { startDateTime, endDateTime } = dateRange;
+
+        // Create and show authentication modal
+        const token = await new Promise((resolve, reject) => {
+            const modal = createAuthModal();
+            document.body.appendChild(modal);
+
+            document.getElementById('auth-submit').addEventListener('click', async () => {
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value.trim();
+
+                if (!username || !password) {
+                    showCustomAlert('Both username and password are required.');
+                    return;
+                }
+
+                try {
+                    const token = await authenticate(username, password);
+                    document.body.removeChild(modal);
+                    resolve(token);
+                } catch (error) {
+                    showCustomAlert('Authentication failed. Please try again.');
+                    console.error('Authentication error:', error);
+                }
+            });
+
+            document.getElementById('auth-cancel').addEventListener('click', () => {
+                document.body.removeChild(modal);
+                reject(new Error('Authentication cancelled'));
+            });
+        });
+
+        // Continue with AWS configuration after successful authentication
+        AWS.config.update({
+            region: 'eu-north-1',
+            credentials: new AWS.CognitoIdentityCredentials({
+                IdentityPoolId: 'eu-north-1:98c07095-e731-4219-bebe-db4dab892ea8',
+                Logins: {
+                    'cognito-idp.eu-north-1.amazonaws.com/eu-north-1_V9kLPNVXl': token
+                }
+            })
+        });
+
+        const loadingIndicator = createLoadingIndicator();
+        document.body.appendChild(loadingIndicator);
+
+        try {
+            const s3 = new AWS.S3();
+            const bucketName = 'aux-data-bucket';
+            const prefixes = ['Aura_NPT_', 'aux_data_'];
+            const relevantData = new Set();
+
+            // Load MS_Sites mapping
+            const siteMap = await loadMSSitesData();
+
+            console.log('Starting data fetch for date range:', {
+                start: new Date(startDateTime).toISOString(),
+                end: new Date(endDateTime).toISOString()
+            });
+
+            for (const prefix of prefixes) {
+                try {
+                    const listedObjects = await s3.listObjectsV2({
+                        Bucket: bucketName,
+                        Prefix: prefix
+                    }).promise();
+
+                    console.log(`Found ${listedObjects.Contents.length} files with prefix ${prefix}`);
+
+                    for (const item of listedObjects.Contents) {
+                        try {
+                            const fileData = await s3.getObject({
+                                Bucket: bucketName,
+                                Key: item.Key
+                            }).promise();
+
+                            const fileContent = fileData.Body.toString('utf-8');
+                            const rows = fileContent.split('\n');
+
+                            for (let i = 1; i < rows.length; i++) {
+                                const row = rows[i].trim();
+                                if (!row) continue;
+
+                                const columns = row.split(',');
+                                if (columns.length >= 4) {
+                                    try {
+                                        const rowDate = new Date(columns[0]).getTime();
+                                        const username = columns[1];
+
+                                        if (rowDate >= startDateTime && rowDate <= endDateTime) {
+                                            let processedTimeSpent = columns[3];
+                                            if (processedTimeSpent && !processedTimeSpent.includes(':')) {
+                                                const minutes = parseFloat(processedTimeSpent);
+                                                if (!isNaN(minutes) && minutes > 0) {
+                                                    const hours = Math.floor(minutes / 60);
+                                                    const mins = Math.floor(minutes % 60);
+                                                    const secs = Math.floor((minutes * 60) % 60);
+                                                    processedTimeSpent = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                                                }
+                                            }
+
+                                            const site = siteMap[username] || 'Unknown';
+                                            const rowWithSite = [...columns.slice(0, 3), processedTimeSpent, ...columns.slice(4), site].join(',');
+                                            relevantData.add(rowWithSite);
+                                        }
+                                    } catch (dateError) {
+                                        console.error('Error processing date for row:', row, dateError);
+                                        continue;
+                                    }
+                                }
+                            }
+                        } catch (fileError) {
+                            console.error(`Error processing file ${item.Key}:`, fileError);
+                            continue;
+                        }
+                    }
+                } catch (prefixError) {
+                    console.error(`Error processing prefix ${prefix}:`, prefixError);
+                    continue;
+                }
+            }
+
+            if (relevantData.size === 0) {
+                showCustomAlert('No data found for the selected date range.');
+                return;
+            }
+
+            const csvContent = `Date,Username,AUX Label,Time Spent,Project Title,Related Audits,Are You the PL?,Comment,Site\n${Array.from(relevantData).join('\n')}`;
+            const startDate = new Date(startDateTime).toISOString().split('T')[0];
+            const endDate = new Date(endDateTime).toISOString().split('T')[0];
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `full_data_${startDate}_to_${endDate}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showCustomAlert('Data successfully exported!');
+
+        } finally {
+            document.body.removeChild(loadingIndicator);
+        }
+
+    } catch (error) {
+        console.error('Error in getFullData:', error);
+        showCustomAlert('Failed to retrieve full data');
+    }
+}
+
+// Helper function to load MS_Sites data
+async function loadMSSitesData() {
+    const s3 = new AWS.S3();
+    const bucketName = 'aux-data-bucket';
+    const key = 'MS_sites.csv';
+
+    try {
+        const data = await s3.getObject({ Bucket: bucketName, Key: key }).promise();
+        const csvContent = data.Body.toString('utf-8');
+        const rows = csvContent.split('\n').slice(1); // Skip header row
+        const siteMap = {};
+
+        rows.forEach(row => {
+            if (!row.trim()) return;
+            const [username, site] = row.split(',');
+            if (username && site) {
+                siteMap[username.trim()] = site.trim();
+            }
+        });
+
+        return siteMap;
+    } catch (error) {
+        console.error('Error loading MS_Sites data:', error);
+        return {};
+    }
+}
+
+///////////////////////////////////////////////////////////////
+//Search Project Time
+async function searchProjectTime() {
+    try {
+        await injectAuthStyles();
+        await loadAwsSdk();
+        await loadCognitoSdk();
+
+        const searchStyles = document.createElement('style');
+        searchStyles.textContent = `
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wg:wght@500;600;700&display=swap');
+
+            .search-container {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) scale(0);
+                z-index: 10001;
+                background: rgba(15, 15, 20, 0.92);
+                padding: 35px;
+                border-radius: 20px;
+                width: 420px;
+                color: #e0e0e0;
+                font-family: 'Inter', sans-serif;
+                backdrop-filter: blur(24px);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+                animation: popupIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+
+            .search-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 24px;
+            }
+
+            .search-title {
+                font-size: 22px;
+                font-weight: 600;
+                color: #ffffff;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .search-close {
+                background: none;
+                border: none;
+                color: rgba(255, 255, 255, 0.5);
+                font-size: 22px;
+                cursor: pointer;
+                padding: 6px;
+                border-radius: 50%;
+                transition: background 0.2s ease;
+            }
+
+            .search-close:hover {
+                background: rgba(255, 255, 255, 0.08);
+                color: white;
+            }
+
+            .search-type-container {
+                margin-bottom: 20px;
+            }
+
+            .search-type-label {
+                display: block;
+                margin-bottom: 10px;
+                color: white;
+                font-weight: 500;
+            }
+
+            .search-type-options {
+                display: flex;
+                gap: 15px;
+            }
+
+            .search-type-option {
+                flex: 1;
+                padding: 12px;
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 10px;
+                color: white;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+
+            .search-type-option.selected {
+                background: rgba(108, 92, 231, 0.2);
+                border-color: #6c5ce7;
+            }
+
+            .search-type-option:hover {
+                background: rgba(255, 255, 255, 0.15);
+            }
+
+            .search-input {
+                width: 100%;
+                padding: 14px 18px;
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 12px;
+                font-size: 14px;
+                color: #ffffff;
+                margin-bottom: 20px;
+                transition: 0.2s border, 0.2s background;
+            }
+
+            .search-input::placeholder {
+                color: rgba(255, 255, 255, 0.3);
+            }
+
+            .search-input:focus {
+                outline: none;
+                background: rgba(255, 255, 255, 0.06);
+                border-color: #6c7bff;
+                box-shadow: 0 0 0 3px rgba(108, 123, 255, 0.1);
+            }
+
+            .search-button {
+                width: 100%;
+                padding: 14px;
+                background: linear-gradient(135deg, #5865f2, #818cf8);
+                border: none;
+                border-radius: 12px;
+                font-size: 15px;
+                font-weight: 600;
+                color: white;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 6px 18px rgba(88, 101, 242, 0.25);
+            }
+
+            .search-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(88, 101, 242, 0.35);
+            }
+
+            .search-button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+
+            .total-time {
+                font-size: 28px;
+                font-weight: 600;
+                margin: 24px 0;
+                text-align: center;
+                color: #c3cfff;
+                background-color: rgba(77, 94, 255, 0.05);
+                border: 1px solid rgba(77, 94, 255, 0.1);
+                border-radius: 14px;
+                padding: 16px;
+                line-height: 1.5;
+            }
+
+            .loading-spinner {
+                display: inline-block;
+                width: 20px;
+                height: 20px;
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                border-radius: 50%;
+                border-top-color: white;
+                animation: spin 0.8s linear infinite;
+                margin-right: 10px;
+            }
+
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+
+            @keyframes popupIn {
+                0% {
+                    opacity: 0;
+                    transform: translate(-50%, -50%) scale(0.95);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
+            }
+
+            @media (max-width: 480px) {
+                .search-container {
+                    width: 90%;
+                    padding: 25px;
+                }
+            }
+        `;
+        document.head.appendChild(searchStyles);
+
+        try {
+            const token = await new Promise((resolve, reject) => {
+                const modal = createAuthModal();
+                document.body.appendChild(modal);
+
+                document.getElementById('auth-submit').addEventListener('click', async () => {
+                    const username = document.getElementById('username').value.trim();
+                    const password = document.getElementById('password').value.trim();
+
+                    if (!username || !password) {
+                        showCustomAlert('Both username and password are required.');
+                        return;
+                    }
+
+                    try {
+                        const token = await authenticate(username, password);
+                        document.body.removeChild(modal);
+                        resolve(token);
+                    } catch (error) {
+                        showCustomAlert('Authentication failed. Please try again.');
+                        console.error('Authentication error:', error);
+                    }
+                });
+
+                document.getElementById('auth-cancel').addEventListener('click', () => {
+                    document.body.removeChild(modal);
+                    reject(new Error('Authentication cancelled'));
+                });
+            });
+
+            const searchContainer = document.createElement('div');
+            searchContainer.className = 'search-container';
+            searchContainer.innerHTML = `
+                <div class="search-header">
+                    <div class="search-title">Search Project Time</div>
+                    <button class="search-close">&times;</button>
+                </div>
+
+                <div class="search-type-container">
+                    <label class="search-type-label">Search Type:</label>
+                    <div class="search-type-options">
+                        <div class="search-type-option" data-type="my">My Project Time</div>
+                        <div class="search-type-option" data-type="total">Total Project Time</div>
+                    </div>
+                </div>
+
+                <input type="text" class="search-input" placeholder="Enter Project Title">
+                <button class="search-button">Search</button>
+                <div class="search-results"></div>
+            `;
+            document.body.appendChild(searchContainer);
+
+            let selectedSearchType = 'my';
+
+            const searchTypeOptions = searchContainer.querySelectorAll('.search-type-option');
+            searchTypeOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    searchTypeOptions.forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    selectedSearchType = option.dataset.type;
+                });
+            });
+
+            searchTypeOptions[0].classList.add('selected');
+
+            const searchBtn = searchContainer.querySelector('.search-button');
+            const searchInput = searchContainer.querySelector('.search-input');
+            const resultsDiv = searchContainer.querySelector('.search-results');
+            const closeBtn = searchContainer.querySelector('.search-close');
+
+            closeBtn.onclick = () => document.body.removeChild(searchContainer);
+
+            searchBtn.onclick = async () => {
+                const projectTitle = searchInput.value.trim().toLowerCase();
+                if (!projectTitle) {
+                    showCustomAlert('Please enter a project title');
+                    return;
+                }
+
+                try {
+                    searchBtn.innerHTML = '<span class="loading-spinner"></span>Searching...';
+                    searchBtn.disabled = true;
+
+                    AWS.config.update({
+                        region: 'eu-north-1',
+                        credentials: new AWS.CognitoIdentityCredentials({
+                            IdentityPoolId: 'eu-north-1:98c07095-e731-4219-bebe-db4dab892ea8',
+                            Logins: {
+                                'cognito-idp.eu-north-1.amazonaws.com/eu-north-1_V9kLPNVXl': token
+                            }
+                        })
+                    });
+
+                    const s3 = new AWS.S3();
+                    const bucketName = 'aux-data-bucket';
+                    const prefixes = ['Aura_NPT_', 'aux_data_'];
+                    let totalTimeInMinutes = 0;
+                    const currentUsername = localStorage.getItem("currentUsername");
+                    let matchCount = 0;
+
+                    for (const prefix of prefixes) {
+                        try {
+                            const listedObjects = await s3.listObjectsV2({
+                                Bucket: bucketName,
+                                Prefix: prefix
+                            }).promise();
+
+                            for (const item of listedObjects.Contents) {
+                                try {
+                                    const fileData = await s3.getObject({
+                                        Bucket: bucketName,
+                                        Key: item.Key
+                                    }).promise();
+
+                                    const fileContent = fileData.Body.toString('utf-8');
+                                    const rows = fileContent.split('\n');
+
+                                    for (let i = 1; i < rows.length; i++) {
+                                        const row = rows[i].split(',');
+                                        if (row.length >= 5) {
+                                            const [date, rowUsername, auxLabel, timeSpent, rowProjectTitle] = row;
+
+                                            if (rowProjectTitle && rowProjectTitle.toLowerCase().includes(projectTitle)) {
+                                                if (selectedSearchType === 'my' && rowUsername !== currentUsername) {
+                                                    continue;
+                                                }
+
+                                                let minutes = 0;
+                                                if (timeSpent) {
+                                                    if (timeSpent.includes(':')) {
+                                                        const [hours, mins, secs] = timeSpent.split(':').map(Number);
+                                                        minutes = (hours * 60) + mins + (secs / 60);
+                                                    } else {
+                                                        const numValue = parseFloat(timeSpent);
+                                                        if (!isNaN(numValue)) {
+                                                            minutes = numValue;
+                                                        }
+                                                    }
+                                                }
+
+                                                if (!isNaN(minutes)) {
+                                                    totalTimeInMinutes += minutes;
+                                                    matchCount++;
+                                                }
+
+                                                console.log('Found match:', {
+                                                    projectTitle: rowProjectTitle,
+                                                    timeSpent,
+                                                    calculatedMinutes: minutes
+                                                });
+                                            }
+                                        }
+                                    }
+                                } catch (fileError) {
+                                    console.error(`Error processing file ${item.Key}:`, fileError);
+                                    continue;
+                                }
+                            }
+                        } catch (prefixError) {
+                            console.error(`Error processing prefix ${prefix}:`, prefixError);
+                            continue;
+                        }
+                    }
+
+                    const hours = Math.floor(totalTimeInMinutes / 60);
+                    const minutes = Math.floor(totalTimeInMinutes % 60);
+                    const seconds = Math.floor((totalTimeInMinutes * 60) % 60);
+                    const formattedTotal = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                    resultsDiv.innerHTML = `
+                        <div class="total-time">
+                            ${selectedSearchType === 'my' ? 'Your' : 'Total'} Time spent on "${projectTitle}":<br>
+                            ${formattedTotal}<br>
+                            <span style="font-size: 14px; color: rgba(255,255,255,0.7);">
+                                (Found in ${matchCount} entries)
+                            </span>
+                        </div>
+                    `;
+
+                    if (matchCount === 0) {
+                        showCustomAlert('No matching projects found');
+                    }
+
+                } catch (error) {
+                    console.error('Search error:', error);
+                    showCustomAlert('Error searching project data');
+                } finally {
+                    searchBtn.innerHTML = 'Search';
+                    searchBtn.disabled = false;
+                }
+            };
+
+        } catch (error) {
+            console.error('Authentication error:', error);
+            showCustomAlert('Authentication failed or was cancelled');
+        }
+
+    } catch (error) {
+        console.error('Initialization error:', error);
+        showCustomAlert('Failed to initialize search functionality');
+    } finally {
+        const loadingIndicator = document.querySelector('.loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+    }
+}
+///////////////////////////////////////////////////////////////
+//Username functionality//
+function displayUsername() {
+    console.log("Attempting to display username...");
+
+    const widgetSelector = "lighthouse-notification-widget";
+    const maxRetries = 20;
+    let attempt = 0;
+
+    function tryDisplay() {
+        console.log(`Attempt ${attempt + 1} to find the widget element...`);
+        const widgetElement = document.querySelector(widgetSelector);
+
+        if (widgetElement) {
+            console.log("Widget element found:", widgetElement);
+
+            const username = widgetElement.getAttribute("login");
+            console.log("Extracted username:", username);
+
+            if (username) {
+                setupUsername(username);
+            } else {
+                console.error("Failed to extract username. 'login' attribute is missing.");
+                const usernameDisplay = document.getElementById("username-display") || createUsernameDisplay();
+                usernameDisplay.textContent = "Unable to load username.";
+                usernameDisplay.style.color = "red";
+            }
+        } else if (attempt < maxRetries) {
+            attempt++;
+            setTimeout(tryDisplay, 500);
+        } else {
+            console.error("Failed to find widget element after maximum retries.");
+        }
+    }
+
+function setupUsername(username) {
+    let usernameDisplay = document.getElementById("username-display");
+    if (!usernameDisplay) {
+        usernameDisplay = createUsernameDisplay();
+    }
+
+    localStorage.setItem("currentUsername", username);
+
+    const avatarContainer = document.createElement("div");
+    avatarContainer.id = "avatar-container";
+    avatarContainer.style.display = "flex";
+    avatarContainer.style.alignItems = "center";
+
+    const avatarLink = document.createElement("a");
+    avatarLink.href = `https://phonetool.amazon.com/users/${username}`;
+    avatarLink.target = "_blank";
+    avatarLink.style.display = "inline-block";
+
+    const avatarImage = document.createElement("img");
+    const storedAvatar = localStorage.getItem("customAvatar") || `https://badgephotos.corp.amazon.com/?uid=${username}`;
+    avatarImage.src = storedAvatar;
+    avatarImage.alt = `${username}'s Avatar`;
+    avatarImage.style.width = "50px";
+    avatarImage.style.height = "50px";
+    avatarImage.style.borderRadius = "50%";
+    avatarImage.style.marginRight = "10px";
+    avatarImage.style.cursor = "pointer";
+    avatarImage.style.marginBottom = "10px";
+    avatarLink.appendChild(avatarImage);
+    const usernameTextNode = document.createElement("span");
+    usernameTextNode.textContent = username;
+    usernameTextNode.style.color = "white";
+    avatarContainer.appendChild(avatarLink);
+    avatarContainer.appendChild(usernameTextNode);
+    usernameDisplay.innerHTML = "";
+    usernameDisplay.appendChild(avatarContainer);
+}
+
+    function createUsernameDisplay() {
+        let usernameDisplay = document.getElementById("username-display");
+        if (!usernameDisplay) {
+            usernameDisplay = document.createElement("div");
+            usernameDisplay.id = "username-display";
+            const widget = document.getElementById("aux-widget");
+            if (widget) {
+                widget.insertBefore(usernameDisplay, widget.firstChild);
+            } else {
+                console.error("Widget not found. Cannot display username.");
+            }
+        }
+        return usernameDisplay;
+    }
+
+    tryDisplay();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("DOM fully loaded. Starting to display username...");
+    displayUsername();
+});
+///////////////////////////////////////////////////////////////
+//Widget
+// Add CSS styles
+const widgetStyles = document.createElement('style');
+widgetStyles.textContent = `
+/* Core Widget Styling */
+#aux-widget {
+  position: fixed;
+  top: 5px;
+  left: 1000px;
+  z-index: 10000;
+  width: 250px;
+  height: auto;
+  max-height: 500px;
+  overflow-y: auto;
+  background: url(https://raw.githubusercontent.com/Mofi-l/static-images/main/Background.jpg) no-repeat center center / cover;
+  padding: 20px;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  color: white;
+  transition: all 0.3s ease;
+  will-change: transform, opacity, filter;
+}
+
+/* Enhanced Dropdown Styling */
+#aux-widget select {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.75);
+  color: white;
+  font-size: 13px;
+  font-family: 'Arial', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  appearance: none;
+  cursor: pointer;
+}
+
+#aux-widget select:hover {
+  background-color: rgba(0, 0, 0, 0.75);
+}
+
+#aux-widget select:focus {
+  outline: none;
+  border: 1px solid #6c5ce7;
+  box-shadow: 0 0 6px rgba(108, 92, 231, 0.7);
+}
+
+#aux-widget select option {
+  background-color: #000;
+  color: white;
+  padding: 8px;
+}
+
+/* Dropdown Containers */
+#aux-l2-container,
+#aux-l3-container {
+  margin-top: 10px;
+  position: relative;
+}
+
+/* Timer Display */
+#aux-timer {
+  padding: 5px;
+  margin-top: 5px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  font-size: 13px;
+  color: #333;
+}
+
+/* Transparent Dropdown State */
+.transparent-dropdown {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+  color: white !important;
+}
+
+/* Action Buttons */
+#action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+#action-buttons img {
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  margin: 5px 2px;
+  transition: transform 0.2s ease;
+}
+
+#action-buttons img:hover {
+  transform: scale(1.1);
+}
+
+/* Minimize Box */
+#minimized-box {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  #aux-widget {
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 300px;
+  }
+}
+
+/* Minimize Button */
+#minimize-btn {
+  cursor: pointer;
+  position: absolute;
+  top: -1px;
+  right: 5px;
+  z-index: 1;
+}
+
+#minimize-btn img {
+  width: 50px;
+  height: 50px;
+  filter: drop-shadow(0 0 5px rgba(255, 165, 0, 0.5));
+  animation: glowPulse 2s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+#minimize-btn:hover img {
+  filter: drop-shadow(0 0 10px rgba(255, 165, 0, 0.8));
+  transform: scale(1.05);
+}
+
+/* Animations */
+@keyframes glowPulse {
+  0% {
+    filter: drop-shadow(0 0 5px5px rgba(255, 165, 0, 0.5));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 15px rgba(255, 165, 0, 0.8));
+    transform: scale(1.03);
+  }
+  100% {
+    filter: drop-shadow(0 0 5px rgba(255, 165, 0, 0.5));
+    transform: scale(1);
+  }
+}
+
+@keyframes glowPulseHover {
+  0% {
+    filter: drop-shadow(0 0 10px rgba(255, 165, 0, 0.8));
+    transform: scale(1.05);
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(255, 165, 0, 1));
+    transform: scale(1.08);
+  }
+  100% {
+    filter: drop-shadow(0 0 10px rgba(255, 165, 0, 0.8));
+    transform: scale(1.05);
+  }
+}
+
+/* Toggle Button */
+#toggle-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  padding: 5px;
+  transition: all 0.3s ease;
+}
+
+#toggle-button img {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#toggle-button.active img {
+  transform: rotate(180deg) scale(1.1);
+}
+
+#toggle-button:hover img {
+  opacity: 0.8;
+  transform: scale(1.1);
+}
+
+#toggle-button.active:hover img {
+  transform: rotate(180deg) scale(1.1);
+}
+
+`;
+
+document.head.appendChild(widgetStyles);
+
+function preloadImages(imageUrls) {
+    imageUrls.forEach((url) => {
+        const img = new Image();
+        img.src = url;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    preloadImages([
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/download(1).png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/upload.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/cloud-computing.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/attachment.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/guide.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/delete.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/bug.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/table.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/Background.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/Aura.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/down.png"
+    ]);
+});
+
+let lastL3Selection = '';
+let lastSelectedL1 = '';
+let lastSelectedL2 = '';
+let lastSelectedL3 = '';
+let finalSelectionMade = false;
+
+const l1Names = {
+    '1': 'Available',
+    '2': 'On Break',
+    '3': 'On Break 2',
+    '4': 'At Lunch',
+    '5': 'Microsite Project Work',
+    '6': 'Non-Microsite Work',
+    '7': 'Offline'
+};
+
+const l2Mapping = {
+    '5': ['Document Review', 'DPM', 'Mapping Project', 'Non RCE Dive', 'Quick Questions', 'RCE Dive', 'Round Table', 'Side by Side', 'Testing', 'Project Quality Audit'],
+    '6': ['GIP-SPX Process Improvement', 'VOS Research', 'In a Meeting', 'Personal Time', 'System Issue', 'In Training', 'HMD Quality Audit']
+};
+
+const l3Mapping = {
+    'Document Review': ['Conduct Project', 'Defect Tracker Creation', 'In-Project Meeting', 'Multi-Site Calibration', 'Personal Quality Check', 'Post Project Clarity', 'Project Prep Review', 'Quality Review by PL'],
+    'DPM': ['Conduct Project', 'Defect Tracker Creation', 'In-Project Meeting', 'Multi-Site Calibration', 'Personal Quality Check', 'Project Rollup', 'Post Project Clarity', 'Project Prep Review', 'Quality Review by PL'],
+    'Mapping Project': ['Conduct Project', 'In-Project Meeting', 'Multi-Site Calibration', 'Personal Quality Check', 'Post Project Clarity', 'Project Prep Review', 'Project Rework', 'Project Rollup', 'Quality Review by PL', 'Quip Review and Update'],
+    'Non RCE Dive': ['Conduct Project', 'In-Project Meeting', 'Multi-Site Calibration', 'Personal Quality Check', 'Post Project Clarity', 'Project Prep Review', 'Project Rework', 'Project Rollup', 'Quality Review by PL', 'Quip Review and Update'],
+    'Quick Questions': ['Conduct Project', 'Defect Tracker Creation', 'In-Project Meeting', 'Multi-Site Calibration', 'Personal Quality Check', 'Post Project Clarity', 'Project Clarity', 'Project Prep Review', 'Project Review CPU', 'Project Rework', 'Project Rollup', 'Project Scoping', 'Project Summary', 'Quality Review by PL', 'Quip Review and Update'],
+    'RCE Dive': ['Conduct Project', 'In-Project Meeting', 'Multi-Site Calibration', 'Personal Quality Check', 'Post Project Clarity', 'Project Prep Review', 'Project Rework', 'Project Rollup', 'Quality Review by PL', 'Quip Review and Update'],
+    'Round Table': ['Conduct Project','In-Project Meeting', 'Multi-Site Calibration', 'Post Project Clarity', 'Project Prep Review'],
+    'Side by Side': ['Conduct Project','In-Project Meeting', 'Multi-Site Calibration', 'Post Project Clarity', 'Project Prep Review'],
+    'Testing': ['Conduct Project', 'Defect Tracker Creation', 'In-Project Meeting', 'Personal Quality Check', 'Post Project Clarity', 'Project Prep Review','Project Rework', 'Project Rollup', 'Quality Review by PL', 'Quip Review and Update'],
+    'In a Meeting': ['Adhoc Leadership Request', 'Adhoc One on One', 'Career Development', 'Engagement Activity', 'Monthly One on One', 'Team Meeting']
+};
+
+function addHTML(html) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    document.body.appendChild(div);
+}
+
+let isWidgetMinimized = localStorage.getItem('widgetState') === 'minimized';
+
+function toggleWidget() {
+    const widget = document.getElementById('aux-widget');
+    const minimizedBox = document.getElementById('minimized-box');
+    const widgetRect = widget.getBoundingClientRect();
+    const boxRect = minimizedBox.getBoundingClientRect();
+    const targetX = boxRect.left - widgetRect.left + (boxRect.width - widgetRect.width) / 2;
+    const targetY = boxRect.top - widgetRect.top + (boxRect.height - widgetRect.height) / 2;
+
+    widget.style.setProperty('--target-x', `${targetX}px`);
+    widget.style.setProperty('--target-y', `${targetY}px`);
+
+    if (isWidgetMinimized) {
+        widget.classList.add('maximizing');
+        widget.classList.remove('minimizing');
+        widget.style.display = 'block';
+        setTimeout(() => {
+            widget.classList.remove('maximizing');
+        }, 500);
+        minimizedBox.textContent = 'Minimize Aura';
+        localStorage.setItem('widgetState', 'maximized');
+    } else {
+        widget.classList.add('minimizing');
+        widget.classList.remove('maximizing');
+        setTimeout(() => {
+            widget.style.display = 'none';
+            widget.classList.remove('minimizing');
+        }, 500);
+        minimizedBox.textContent = 'Maximize Aura';
+        localStorage.setItem('widgetState', 'minimized');
+    }
+
+    isWidgetMinimized = !isWidgetMinimized;
+}
+
+////////////////////////////
+const widgetHTML = `
+    <div id="aux-widget" style="position: fixed; top: 5px; left: 1000px; z-index: 10000; background: url(https://raw.githubusercontent.com/Mofi-l/static-images/main/Background.jpg) no-repeat center center / cover; padding: 20px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); color: white;">
+        <div style="display: block;">
+            <select id="aux-l1" onchange="handleL1Change(event)">
+                <option value="">Select L1</option>
+                <option value="1">Available</option>
+                <option value="2">On Break</option>
+                <option value="3">On Break 2</option>
+                <option value="4">At Lunch</option>
+                <option value="5">Microsite Project Work</option>
+                <option value="6">Non-Microsite Work</option>
+                <option value="7">Offline</option>
+            </select>
+            <div id="aux-l2-container"></div>
+            <div id="aux-l3-container"></div>
+            <div id="aux-timer" style="padding: 10px; margin-top: 10px; background: rgba(255, 255, 255, 0.8); border-radius: 5px;"></div>
+        </div>
+        <!-- Minimize Button -->
+        <div id="minimize-btn" style="cursor: pointer; position: absolute; top: -1px; right: 5px;" title="Created with 🧡 and a touch of ✨">
+            <img src="https://raw.githubusercontent.com/Mofi-l/static-images/main/Aura.png" style="width: 50px; height: 50px;">
+        </div>
+    </div>
+`;
+addHTML(widgetHTML);
+
+const minimizedBoxHTML = `
+    <div id="minimized-box" style="position: fixed; bottom: 10px; right: 10px; padding: 10px; background: rgba(0, 0, 0, 0.7); color: white; cursor: pointer; border-radius: 5px;">
+        ${isWidgetMinimized ? 'Maximize Aura' : 'Minimize Aura'}
+    </div>
+`;
+addHTML(minimizedBoxHTML);
+
+        document.getElementById('aux-widget').addEventListener('change', function(event) {
+            if (event.target.tagName === 'SELECT') {
+                event.target.classList.add('transparent-dropdown');
+            }
+        });
+
+        document.getElementById('aux-widget').addEventListener('click', function(event) {
+            if (event.target.tagName === 'SELECT') {
+                event.target.classList.remove('transparent-dropdown');
+            }
+        });
+        document.getElementById('minimize-btn').addEventListener('click', toggleWidget);
+        document.getElementById('minimized-box').addEventListener('click', toggleWidget);
+
+        if (isWidgetMinimized) {
+            document.getElementById('aux-widget').style.display = 'none';
+            document.getElementById('minimized-box').textContent = 'Maximize Aura';
+        } else {
+            document.getElementById('aux-widget').style.display = 'block';
+            document.getElementById('minimized-box').textContent = 'Minimize Aura';
+        }
+
+window.addEventListener('DOMContentLoaded', () => {
+    const widget = document.getElementById('aux-widget');
+    const minimizedBox = document.getElementById('minimized-box');
+    if (isWidgetMinimized) {
+        widget.style.display = 'none';
+        minimizedBox.textContent = 'Maximize Aura';
+    } else {
+        widget.style.display = 'block';
+        minimizedBox.textContent = 'Minimize Aura';
+    }
+});
+
+const toggleButtonHTML = `
+    <button id="toggle-button" style="background: transparent; border: none; cursor: pointer; position: relative;">
+        <img src="https://raw.githubusercontent.com/Mofi-l/static-images/main/down.png" style="width: 15px; height: 15px;"/>
+    </button>
+`;
+
+document.getElementById('aux-widget').innerHTML += toggleButtonHTML;
+
+const actionButtonsContainer = document.createElement('div');
+actionButtonsContainer.style.display = 'none';
+actionButtonsContainer.style.marginTop = '10px';
+actionButtonsContainer.id = 'action-buttons';
+
+actionButtonsContainer.innerHTML = `
+    <img id="exportToCSVButton"
+         src="https://raw.githubusercontent.com/Mofi-l/static-images/main/download(1).png"
+         alt="Export to CSV"
+         title="Export to CSV"
+         style="width: 40px; height: 40px; cursor: pointer; margin: 5px 2px;">
+
+    <img id="restoreCSVButton"
+         src="https://raw.githubusercontent.com/Mofi-l/static-images/main/upload.png"
+         alt="Restore CSV"
+         title="Restore CSV"
+         style="width: 40px; height: 40px; cursor: pointer; margin: 5px 2px;">
+
+    <img id="exportToAWSButton"
+         src="https://raw.githubusercontent.com/Mofi-l/static-images/main/cloud-computing.png"
+         alt="Export to AWS"
+         title="Export to AWS"
+         style="width: 30px; height: 30px; cursor: pointer; margin: 5px 2px;">
+
+    <img id="importFromAws"
+         src="https://raw.githubusercontent.com/Mofi-l/static-images/main/attachment.png"
+         alt="Import from AWS"
+         title="Import from AWS"
+         style="width: 30px; height: 30px; cursor: pointer; margin: 5px 2px;">
+
+    <img id="auraGuidelines"
+         src="https://raw.githubusercontent.com/Mofi-l/static-images/main/guide.png"
+         alt="Aura Guidelines"
+         title="Aura Guidelines"
+         style="width: 30px; height: 30px; cursor: pointer; margin: 5px 2px;">
+
+    <img id="clearLocalStorageButton"
+         src="https://raw.githubusercontent.com/Mofi-l/static-images/main/delete.png"
+         alt="Clear Local Storage"
+         title="Clear Local Storage"
+         style="width: 30px; height: 30px; cursor: pointer; margin: 5px 2px;">
+
+    <img id="reportBugImage"
+         src="https://raw.githubusercontent.com/Mofi-l/static-images/main/bug.png"
+         alt="Report a Bug"
+         title="Report a Bug"
+         style="width: 30px; height: 30px; cursor: pointer; margin: 5px 2px;">
+
+    <img id="displayAuxDataButton"
+         src="https://raw.githubusercontent.com/Mofi-l/static-images/main/table.png"
+         alt="Display AUX Data"
+         title="Display AUX Data"
+         style="width: 30px; height: 30px; cursor: pointer; margin: 5px 2px;">
+
+    <img id="searchProjectTimeButton"
+         src="https://raw.githubusercontent.com/Mofi-l/static-images/main/search.png"
+         alt="Search Project Time"
+         title="Search Project Time"
+         style="width: 30px; height: 30px; cursor: pointer; margin: 5px 2px;">
+
+    <img id="getFullDataButton"
+         src="https://raw.githubusercontent.com/Mofi-l/static-images/main/database.png"
+         alt="Get Full Data"
+         title="Get Full Data"
+         style="width: 30px; height: 30px; cursor: pointer; margin: 5px 2px;">
+`;
+
+const imagesToPreload = [
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/download(1).png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/upload.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/cloud-computing.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/attachment.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/guide.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/delete.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/bug.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/table.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/Background.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/Aura.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/search.png",
+"https://raw.githubusercontent.com/Mofi-l/static-images/main/database.png",
+];
+
+imagesToPreload.forEach(src => {
+    const img = new Image();
+    img.src = src;
+});
+
+document.getElementById('aux-widget').appendChild(actionButtonsContainer);
+document.getElementById('toggle-button').addEventListener('click', function() {
+    const container = document.getElementById('action-buttons');
+    container.style.display = container.style.display === 'none' ? 'block' : 'none';
+});
+document.getElementById('exportToCSVButton').addEventListener('click', exportToCSV);
+document.getElementById('searchProjectTimeButton').addEventListener('click', searchProjectTime);
+document.getElementById('restoreCSVButton').addEventListener('click', function() {
+    document.getElementById('csvFileInput').click();
+});
+document.getElementById('exportToAWSButton').addEventListener('click', exportToAWS);
+document.getElementById('displayAuxDataButton').addEventListener('click', function() {
+    const popupContainer = document.getElementById('auxTablePopup');
+    if (popupContainer) {
+        if (popupContainer.style.display === 'none') {
+            displayAUXData(true);
+        } else {
+            popupContainer.style.display = 'none';
+        }
+    } else {
+        displayAUXData(true);
+    }
+});
+document.getElementById('importFromAws').addEventListener('click', importFromAws);
+document.getElementById('getFullDataButton').addEventListener('click', getFullData);
+document.getElementById('auraGuidelines').addEventListener('click', function() {
+    window.open('https://drive.corp.amazon.com/view/mofila@/Microsite%20Automated%20NPT/Microsite%20NPT%20Prod/Microsite%20NPT%20Guidelines.pdf', '_blank');
+});
+document.getElementById('reportBugImage').addEventListener('click', function() {
+    window.open('https://quip-amazon.com/LcE2AwAHiL2m/AURA-Aux-Usage-Real-time-Analyzer', '_blank');
+});
+document.getElementById('clearLocalStorageButton').addEventListener('click', function () {
+    showCustomConfirm('Action will clear the current NPT data. Do you want to proceed?', (userConfirmed) => {
+        if (userConfirmed) {
+            localStorage.clear();
+            showCustomAlert('Local storage has been cleared successfully.');
+        }
+    });
+});
+const toggleButton = document.getElementById('toggle-button');
+toggleButton.addEventListener('click', () => {
+    toggleButton.classList.toggle('active');
+});
+
+function makeWidgetDraggable() {
+    const widget = document.getElementById('aux-widget');
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    widget.addEventListener('mousedown', (event) => {
+        isDragging = true;
+        offsetX = event.clientX - widget.getBoundingClientRect().left;
+        offsetY = event.clientY - widget.getBoundingClientRect().top;
+    });
+
+    document.addEventListener('mousemove', (event) => {
+        if (isDragging) {
+            const newX = event.clientX - offsetX;
+            const newY = event.clientY - offsetY;
+            widget.style.left = newX + 'px';
+            widget.style.top = newY + 'px';
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+    });
+}
+
+makeWidgetDraggable();
+///////////////////////////////////////////////////////////////
+//Update Selections Body//
+    function updateSelections(l1, l2, l3) {
+        const auxL1 = document.getElementById('aux-l1');
+
+        document.getElementById('aux-l1').addEventListener('change', function(event) {
+            const l1Value = event.target.value;
+            if (l1Value) {
+                startAUXTimer(l1Names[l1Value] + ' - N/A - N/A');
+            } else {
+                stopAUXTimer();
+            }
+        });
+
+        const auxL2 = document.getElementById('aux-l2');
+        const auxL3 = document.getElementById('aux-l3');
+        console.log("Updating selections to:", l1, l2, l3);
+        if (auxL1) auxL1.value = l1;
+        if (auxL2) {
+            auxL2.value = l2;
+            auxL2.dispatchEvent(new Event('change'));
+        }
+        if (auxL3 && l3) {
+            setTimeout(() => {
+                auxL3.value = l3;
+                auxL3.dispatchEvent(new Event('change'));
+            }, 100);
+        }
+    }
+///////////////////////////////////////////////////////////////
+//Export functions//
+function addFileInput() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.id = 'csvFileInput';
+    input.style.display = 'none';
+    input.accept = '.csv';
+    input.addEventListener('change', restoreFromCSV);
+    document.body.appendChild(input);
+}
+///////////////////////////////////////////////////////////////
+//Event Handling Function//
+window.handleL1Change = function(event) {
+    const l1Value = event.target.value;
+    const l2Container = document.getElementById('aux-l2-container');
+    const l3Container = document.getElementById('aux-l3-container');
+
+    const isRestoring = event.isTrusted === false;
+
+    localStorage.setItem('auxL1', l1Value);
+    l2Container.innerHTML = '';
+    l3Container.innerHTML = '';
+    l2Container.style.display = 'none';
+    l3Container.style.display = 'none';
+
+    const l2Value = document.getElementById('aux-l2') ? document.getElementById('aux-l2').value : '';
+
+    if (l2Mapping[l1Value]) {
+        let l2SelectHTML = '<select id="aux-l2" onchange="handleL2Change(event)">';
+        l2SelectHTML += '<option value="">Select L2</option>';
+        l2Mapping[l1Value].forEach(opt => {
+            l2SelectHTML += `<option value="${opt}">${opt}</option>`;
+        });
+        l2SelectHTML += '</select>';
+        l2Container.innerHTML = l2SelectHTML;
+
+        document.getElementById('aux-l2').addEventListener('change', function(event) {
+            const l2Value = event.target.value;
+            const l1Value = document.getElementById('aux-l1').value;
+            if (l2Value) {
+                if (!l3Mapping[l2Value]) {
+                    handleAuxStateChange(`${l1Names[l1Value]} - ${l2Value} - N/A`);
+                }
+            } else {
+                stopAUXTimer();
+            }
+        });
+
+        // Show L2 container if same L1 is selected again
+        const lastL1Value = localStorage.getItem('lastSelectedL1');
+        if (l1Value === lastL1Value) {
+            l2Container.style.display = 'block';
+        } else {
+            l2Container.style.display = 'block'; // Show for first selection too
+        }
+        localStorage.setItem('lastSelectedL1', l1Value);
+    } else {
+        const newAuxLabel = `${l1Names[l1Value]} - N/A - N/A`;
+        handleAuxStateChange(newAuxLabel);
+
+        if (l1Value === '' && isTabFocused && !alertShown) {
+            showCustomAlert('Export your NPT to AWS');
+            alertShown = true;
+        }
+
+        if (l1Value) {
+            localStorage.setItem('manualAUXChange', 'true');
+            handleAuxStateChange(l1Names[l1Value] + ' - N/A - N/A');
+        } else {
+            stopAUXTimer();
+        }
+
+        if (l1Value !== '' && isTabFocused && !isRestoring) {
+            showCombinedPopup(newAuxLabel, (auditData) => {
+                console.log('Audit data submitted:', auditData);
+            });
+        }
+    }
+if (localStorage.getItem('previousAux') === 'CP' &&
+    l1Value !== 'Conduct Project' &&
+    isTabFocused &&
+    !isInitialLoad) { // Add check for initial load
+    showCustomAlert('Your previous AUX was Conduct Project, please enter Audit counts if applicable');
+}
+    localStorage.setItem('previousAux', l1Value === 'Conduct Project' ? 'CP' : '');
+
+    saveCurrentSelections();
+};
+
+window.handleL2Change = function(event) {
+    const l2Value = event.target.value;
+    const l3Container = document.getElementById('aux-l3-container');
+    const l1Value = document.getElementById('aux-l1').value;
+
+    const isRestoring = event.isTrusted === false;
+
+    localStorage.setItem('auxL2', l2Value);
+    l3Container.innerHTML = '';
+    l3Container.style.display = 'none';
+
+    if (l3Mapping[l2Value]) {
+        let l3SelectHTML = '<select id="aux-l3" onchange="handleL3Change(event)">';
+        l3SelectHTML += '<option value="">Select L3</option>';
+        l3Mapping[l2Value].forEach(opt => {
+            l3SelectHTML += `<option value="${opt}">${opt}</option>`;
+        });
+        l3SelectHTML += '</select>';
+        l3Container.innerHTML = l3SelectHTML;
+
+        document.getElementById('aux-l3').addEventListener('change', function(event) {
+            const l3Value = event.target.value;
+            const l2Value = document.getElementById('aux-l2').value;
+            const l1Value = document.getElementById('aux-l1').value;
+            if (l3Value) {
+                handleAuxStateChange(`${l1Names[l1Value]} - ${l2Value} - ${l3Value}`);
+            } else {
+                stopAUXTimer();
+            }
+        });
+
+        l3Container.style.display = 'block';
+    } else {
+        const newAuxLabel = `${l1Names[l1Value]} - ${l2Value} - N/A`;
+        handleAuxStateChange(newAuxLabel);
+    }
+
+    const newAuxLabel = `${l1Names[l1Value]} - ${l2Value} - N/A`;
+    updateTimerDisplay(newAuxLabel, 0);
+
+    if (l2Value !== '' && !l3Mapping[l2Value] && !isRestoring) {
+        if (isTabFocused) {
+            showCombinedPopup(newAuxLabel, (auditData) => {
+                console.log('Audit data submitted:', auditData);
+            });
+        }
+    }
+
+if (localStorage.getItem('previousAux') === 'CP' &&
+    l2Value !== 'Conduct Project' &&
+    isTabFocused &&
+    !isInitialLoad) {
+    showCustomAlert('Your previous AUX was Conduct Project, please enter Audit counts if applicable');
+}
+    localStorage.setItem('previousAux', l2Value === 'Conduct Project' ? 'CP' : '');
+
+    saveCurrentSelections();
+};
+
+window.handleL3Change = function(event) {
+    const l3Value = event.target.value;
+    const l2Value = document.getElementById('aux-l2').value;
+    const l1Value = document.getElementById('aux-l1').value;
+
+    const isRestoring = event.isTrusted === false;
+
+    localStorage.setItem('auxL3', l3Value);
+    const PreviousAux = localStorage.getItem('PreviousAux');
+
+    if (l3Value !== '') {
+        const newAuxLabel = `${l1Names[l1Value]} - ${l2Value} - ${l3Value}`;
+
+        const currentState = JSON.parse(localStorage.getItem('auxState')) || {};
+        if (currentState.auxLabel !== newAuxLabel) {
+            handleAuxStateChange(newAuxLabel);
+        }
+
+        if (isTabFocused && !isRestoring) {
+            showCombinedPopup(newAuxLabel, (auditData) => {
+                console.log('Audit data submitted:', auditData);
+            });
+        }
+    }
+
+    localStorage.setItem('PreviousAux', l3Value);
+    const startTime = JSON.parse(localStorage.getItem('auxState'))?.startTime || Date.now();
+    const endTime = new Date();
+    const timeSpent = endTime - new Date(startTime);
+
+    const formattedTimeSpent = formatTime(timeSpent);
+    const newAuxLabel = `${l1Names[l1Value]} - ${l2Value} - ${l3Value}`;
+    updateTimerDisplay(newAuxLabel, timeSpent);
+
+    const currentState = JSON.parse(localStorage.getItem('auxState')) || {};
+    if (currentState.auxLabel === newAuxLabel) {
+        saveAUXData({
+            auxLabel: newAuxLabel,
+            timeSpent: timeSpent,
+            date: formatDate(new Date())
+        });
+    }
+
+    lastSelectedL1 = l1Value;
+    lastSelectedL2 = l2Value;
+    lastSelectedL3 = l3Value;
+    lastL3Selection = l3Value;
+    finalSelectionMade = true;
+
+    if (finalLayerSelected()) {
+        const auxLabel = `${l1Names[l1Value]} - ${l2Value} - ${l3Value}`;
+        const timeSpent = calculateTimeSpent(startTime);
+        saveAUXData({ auxLabel, timeSpent });
+        exportToCSV();
+        exportToAWS();
+    }
+
+if (localStorage.getItem('previousAux') === 'CP' &&
+    l3Value !== 'Conduct Project' &&
+    isTabFocused &&
+    !isInitialLoad) {
+    showCustomAlert('Your previous AUX was Conduct Project, please enter Audit counts if applicable');
+}
+    localStorage.setItem('previousAux', l3Value === 'Conduct Project' ? 'CP' : '');
+
+    saveCurrentSelections();
+};
+
+// Helper function for final layer check (keep this as is)
+function finalLayerSelected() {
+    const auxL1Value = document.getElementById('aux-l1').value;
+    const auxL2Value = document.getElementById('aux-l2')?.value;
+    const auxL3Value = document.getElementById('aux-l3')?.value;
+    return auxL1Value && auxL2Value && auxL3Value && !l3Mapping[auxL2Value];
+}
+
+///////////////////////////////////////////////////////////////
+//POP-UP Function//
+async function showCombinedPopup(auxLabel, callback) {
+    if (!isTabFocused) return;
+    console.log('showCombinedPopup function called');
+
+    const auxData = JSON.parse(localStorage.getItem('auxData')) || [];
+    const previousEntry = auxData[auxData.length - 1];
+
+    const wasPreviousConductProject = previousEntry &&
+        previousEntry.auxLabel &&
+        previousEntry.auxLabel.toLowerCase().includes('conduct project');
+
+    const currentLabel = auxLabel.toLowerCase();
+
+    const enableAuditCount = wasPreviousConductProject &&
+        !currentLabel.includes('conduct project');
+
+    const styles = document.createElement('style');
+    styles.textContent = `
+        #combined-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            z-index: 10001;
+            background: url(https://raw.githubusercontent.com/Mofi-l/static-images/main/Background.jpg) no-repeat center center / cover;
+            padding: 35px;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4),
+                    0 0 0 1px rgba(255, 255, 255, 0.1);
+            max-width: 650px;
+            width: 90%;
+            color: white;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            animation: popupIn 0.4s cubic-bezier(0.26, 1.04, 0.54, 1) forwards;
+        }
+
+        #combined-popup h2 {
+            margin-bottom: 25px;
+            font-size: 32px;
+            text-align: center;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .input-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .input-field {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .input-field label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .input-field input,
+        .input-field textarea {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .input-field input:focus,
+        .input-field textarea:focus {
+            outline: none;
+            border-color: rgba(108, 92, 231, 0.6);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2);
+        }
+
+        .input-field input::placeholder,
+        .input-field textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .radio-group {
+            margin: 20px 0;
+        }
+
+        .radio-label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .radio-options {
+            display: flex;
+            gap: 20px;
+        }
+
+        .radio-option {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"] {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            margin-right: 8px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"]:checked {
+            border-color: #6c5ce7;
+            background: #6c5ce7;
+        }
+
+        .radio-option input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .popup-button {
+            padding: 12px 28px;
+            font-size: 16px;
+            font-weight: 500;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #submit-btn {
+            background: linear-gradient(135deg, #6c5ce7, #a393f5);
+            color: white;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+        }
+
+        #submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4);
+        }
+
+        #cancel-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            backdrop-filter: blur(4px);
+        }
+
+        #cancel-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .input-field label::after {
+            content: ' *';
+            color: #ff4757;
+        }
+
+        .input-field input:invalid {
+            border-color: #ff4757;
+        }
+
+        .input-field input:invalid:focus {
+            border-color: #ff4757;
+            box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.2);
+        }
+
+        @keyframes popupIn {
+            0% {
+                transform: translate(-50%, -50%) scale(0.9);
+                opacity: 0;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes popupOut {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(0.9);
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #combined-popup {
+                width: 95%;
+                padding: 25px;
+            }
+
+            #combined-popup h2 {
+                font-size: 24px;
+            }
+
+            .input-field {
+                min-width: 100%;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .popup-button {
+                width: 100%;
+            }
+
+            .radio-options {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    `;
+    document.head.appendChild(styles);
+
+    const popup = document.createElement('div');
+    popup.id = 'combined-popup';
+    popup.innerHTML = `
+        <div class="popup-content">
+            <h2>Enter Data</h2>
+
+            <div class="input-container">
+                <div class="input-field">
+                    <label for="projectTitle">Project Title</label>
+                    <input
+                        type="text"
+                        id="projectTitle"
+                        name="projectTitle"
+                        placeholder="Enter project title"
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div class="input-field">
+                    <label for="relatedAudits">Audit Counts ${enableAuditCount ? '*' : ''}</label>
+                    <input
+                        type="number"
+                        id="relatedAudits"
+                        name="relatedAudits"
+                        placeholder="${enableAuditCount ? 'Enter number of audits' : 'Audit count not required'}"
+                        min="0"
+                        ${enableAuditCount ? 'required' : ''}
+                        ${!enableAuditCount ? 'disabled' : ''}
+                        ${!enableAuditCount ? 'style="background-color: #f5f5f5;"' : ''}
+                        onkeypress="return (event.charCode >= 48 && event.charCode <= 57)"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                    >
+                    ${!enableAuditCount ?
+                        '<small style="color: #666; display: block; margin-top: 5px;">Audit count is only required after "Conduct Project"</small>'
+                        : ''}
+                </div>
+
+            <div class="input-field">
+                <label for="comment-text">Comment</label>
+                <textarea
+                    id="comment-text"
+                    rows="4"
+                    placeholder="Enter your comment here..."
+                ></textarea>
+            </div>
+
+
+            <div class="radio-group">
+                <label class="radio-label">Are you the PL?</label>
+                <div class="radio-options">
+                    <label class="radio-option">
+                        <input type="radio" id="areYouPLYes" name="areYouPL" value="Yes">
+                        <span class="radio-label">Yes</span>
+                    </label>
+
+                    <label class="radio-option">
+                        <input type="radio" id="areYouPLNo" name="areYouPL" value="No">
+                        <span class="radio-label">No</span>
+                    </label>
+
+                    <label class="radio-option">
+                        <input type="radio" id="areYouPLNA" name="areYouPL" value="N/A">
+                        <span class="radio-label">N/A</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button type="button" id="submit-btn" class="popup-button">
+                    Submit
+                </button>
+                <button type="button" id="cancel-btn" class="popup-button">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(popup);
+
+    const auditInput = document.getElementById('relatedAudits');
+
+    auditInput.addEventListener('input', function(e) {
+        this.value = this.value.replace(/[^0-9]/g, '');
+
+        if (this.value < 0) {
+            this.value = 0;
+        }
+    });
+
+    auditInput.addEventListener('keypress', function(e) {
+        if (e.charCode < 48 || e.charCode > 57) {
+            e.preventDefault();
+        }
+    });
+
+    document.getElementById('submit-btn').addEventListener('click', function() {
+    const auditInput = document.getElementById('relatedAudits');
+    const auditCount = auditInput.value;
+
+    if (!auditInput.disabled) {
+        if (!auditCount || isNaN(auditCount) || auditCount < 0) {
+            showCustomAlert('Please enter a valid number for audit counts');
+            return;
+        }
+    }
+
+    if (validateInputs()) {
+        submitCombinedData(auxLabel, callback);
+        closePopup();
+    } else {
+        showCustomAlert('Please fill in all required fields');
+    }
+});
+
+    document.getElementById('cancel-btn').addEventListener('click', function() {
+        closePopup();
+    });
+
+    function closePopup() {
+        const popup = document.getElementById('combined-popup');
+        if (!popup) {
+            console.warn('Popup element not found, skipping close operation.');
+            return;
+        }
+
+        popup.style.animation = 'popupOut 0.3s forwards';
+        setTimeout(() => {
+            if (popup.parentNode) {
+                popup.remove();
+            }
+        }, 300);
+    }
+
+    window.addEventListener('beforeunload', function(e) {
+        const popup = document.getElementById('combined-popup');
+        if (popup) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+}
+
+function validateInputs() {
+    const projectTitle = document.getElementById('projectTitle');
+    const comment = document.getElementById('comment-text');
+    const relatedAudits = document.getElementById('relatedAudits');
+
+    if (!projectTitle || !comment || !relatedAudits) {
+        console.error('One or more required input elements not found');
+        return false;
+    }
+
+    const titleValue = projectTitle.value.trim();
+    const commentValue = comment.value.trim();
+    const auditValue = relatedAudits.value.trim();
+
+    if (!titleValue) {
+        showCustomAlert('Please enter a project title');
+        projectTitle.focus();
+        return false;
+    }
+
+    if (!commentValue) {
+        showCustomAlert('Please enter a comment');
+        comment.focus();
+        return false;
+    }
+
+    if (!relatedAudits.disabled) {
+        if (!auditValue) {
+            showCustomAlert('Please enter the number of audits');
+            relatedAudits.focus();
+            return false;
+        }
+
+        if (isNaN(auditValue) || parseInt(auditValue) < 0) {
+            showCustomAlert('Please enter a valid positive number for audit counts');
+            relatedAudits.focus();
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+function submitCombinedData(auxLabel, callback) {
+    const comment = document.getElementById('comment-text').value;
+    const projectTitle = document.getElementById('projectTitle').value;
+    const relatedAudits = document.getElementById('relatedAudits').value;
+    const areYouPL = document.querySelector('input[name="areYouPL"]:checked').value;
+
+    localStorage.setItem('comment-' + auxLabel, comment);
+    localStorage.setItem('areYouPL-' + auxLabel, areYouPL);
+    localStorage.setItem('projectTitle-' + auxLabel, projectTitle);
+    localStorage.setItem('relatedAudits-' + auxLabel, relatedAudits);
+
+    document.getElementById('combined-popup').remove();
+
+    callback({
+        comment,
+        areYouPL,
+        projectTitle,
+        relatedAudits
+    });
+}
+///////////////////////////////////////////////////////////////
+//Timer Functions//
+function cleanupTimer() {
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+}
+
+function validateTimeFormat(timeString) {
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+    return timeRegex.test(timeString);
+}
+
+function parseTime(timeString) {
+    if (typeof timeString === 'number') {
+        return timeString;
+    }
+
+    if (typeof timeString === 'string') {
+        timeString = timeString.replace(/\s*(AM|PM)/i, '').trim();
+
+        if (timeString.includes(':')) {
+            const [hours, minutes, seconds] = timeString.split(':').map(Number);
+            return ((hours * 3600) + (minutes * 60) + seconds) * 1000;
+        }
+    }
+
+    return parseInt(timeString, 10);
+}
+
+function formatTime(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function getLocalTimeString(date) {
+    return date.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+function convertToUTC(timeString) {
+    const date = new Date();
+    const [hours, minutes, seconds] = timeString.split(':').map(Number);
+    date.setHours(hours, minutes, seconds);
+    return date.toUTCString();
+}
+
+function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+}
+
+function calculateTimeSpent(startTime) {
+        const endTime = new Date();
+        return endTime - new Date(startTime);
+}
+
+function displayTimer() {
+    let timerElement = document.getElementById('aux-timer');
+    if (!timerElement) {
+        const widget = document.getElementById('aux-widget');
+        if (widget) {
+            timerElement = document.createElement('div');
+            timerElement.id = 'aux-timer';
+            timerElement.style.padding = '10px';
+            timerElement.style.marginTop = '10px';
+            timerElement.style.background = '#f0f0f0';
+            timerElement.style.borderRadius = '5px';
+            widget.appendChild(timerElement);
+        }
+    }
+    return timerElement;
+}
+
+function updateTimer(startTime, auxLabel, timerElement) {
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+    }
+
+    const currentElapsedTime = new Date().getTime() - startTime;
+    const cleanedAuxLabel = auxLabel.replace(/\s*-\s*N\/A\s*/g, '').trim();
+    const auxParts = cleanedAuxLabel.split(' - ').filter(part => part.trim() !== '');
+    let displayedAuxLabel = '';
+
+    if (auxParts.length === 1) {
+        displayedAuxLabel = auxParts[0];
+    } else if (auxParts.length === 2) {
+        displayedAuxLabel = auxParts[1];
+    } else if (auxParts.length === 3) {
+        displayedAuxLabel = auxParts[2];
+    } else {
+        displayedAuxLabel = 'No AUX available';
+    }
+
+    timerElement.textContent = `${displayedAuxLabel} : ${formatTime(currentElapsedTime)}`;
+    timerElement.title = `Current AUX: ${cleanedAuxLabel}`;
+
+    animationFrameId = requestAnimationFrame(() => updateTimer(startTime, auxLabel, timerElement));
+}
+
+function startAUXTimer(auxLabel, elapsedTime = 0) {
+    cleanupTimer();
+
+    const auxState = JSON.parse(localStorage.getItem('auxState'));
+    if (auxState && auxState.auxLabel === auxLabel) {
+        updateTimerDisplay(auxLabel, calculateTimeSpent(auxState.startTime));
+        return;
+    }
+
+    stopAUXTimer();
+
+    const startTime = new Date().getTime() - elapsedTime;
+    localStorage.setItem('auxState', JSON.stringify({
+        auxLabel,
+        startTime,
+        timestamp: Date.now()
+    }));
+
+    const timerElement = displayTimer();
+    requestAnimationFrame(() => updateTimer(startTime, auxLabel, timerElement));
+
+    localStorage.setItem('auxChange', JSON.stringify({
+        action: 'startTimer',
+        auxLabel,
+        timestamp: Date.now()
+    }));
+
+    saveAUXData({
+        auxLabel,
+        timeSpent: 0,
+        date: formatDate(new Date()),
+        username: displayUsername(),
+        projectTitle: '',
+        areYouPL: '',
+        comment: ''
+    });
+    localStorage.setItem('auxStartTime', startTime);
+}
+
+function stopAUXTimer() {
+    cleanupTimer();
+    if (timerUpdateDebounce) {
+        clearTimeout(timerUpdateDebounce);
+    }
+
+    const auxState = JSON.parse(localStorage.getItem('auxState'));
+    if (auxState) {
+        const { auxLabel, startTime } = auxState;
+        const endTime = new Date();
+        const timeSpent = endTime - new Date(startTime);
+        saveAUXData({
+            date: formatDate(endTime),
+            username: displayUsername(),
+            auxLabel,
+            timeSpent
+        });
+        localStorage.removeItem('auxState');
+        localStorage.setItem('auxChange', JSON.stringify({
+            action: 'stopTimer',
+            timestamp: Date.now()
+        }));
+    }
+}
+
+function isAfter12PM() {
+    const now = new Date();
+    return now.getHours() >= 12;
+}
+
+function startLateTimer() {
+    const now = new Date();
+    const loggedBefore12 = localStorage.getItem('loggedBefore12') === 'true';
+
+    if (now.getHours() >= 12 && !localStorage.getItem('userLoggedIn') && !localStorage.getItem('manualAUXChange') && !localStorage.getItem('auxL1') && !loggedBefore12) {
+        const auxLabel = 'Late Login';
+        const elapsedTime = calculateElapsedTimeFrom12PM();
+        startAUXTimer(auxLabel, elapsedTime);
+        localStorage.setItem('timerStatus', 'late');
+        console.log('Late timer started:', auxLabel, 'Elapsed time:', formatTime(elapsedTime));
+    } else {
+        console.log('Late timer not started. Either auxL1 is already set, user logged in before 12, or other conditions not met.');
+    }
+}
+
+function checkLoginStatus() {
+    const username = displayUsername();
+    if (username) {
+        localStorage.setItem('userLoggedIn', true);
+        console.log('User logged in:', username);
+
+        const now = new Date();
+        if (now.getHours() < 12) {
+            localStorage.setItem('loggedBefore12', true);
+        }
+
+        localStorage.removeItem('timerStatus');
+    }
+}
+
+function calculateElapsedTimeFrom12PM() {
+    const now = new Date();
+    const noon = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+    const elapsedTime = now - noon;
+
+    if (elapsedTime < 0) {
+        return 0;
+    }
+
+    return elapsedTime;
+}
+
+function restoreTimer() {
+    const auxState = JSON.parse(localStorage.getItem('auxState'));
+    const manualAUXChange = localStorage.getItem('manualAUXChange');
+
+    if (auxState && auxState.startTime) {
+        const startTime = auxState.startTime;
+        let auxLabel = auxState.auxLabel;
+
+        auxLabel = auxLabel.replace(/\s*-\s*N\/A\s*/g, '').trim();
+
+        const auxParts = auxLabel.split(' - ').filter(part => part.trim() !== '');
+
+        let displayedAuxLabel = '';
+
+        if (auxParts.length === 1) {
+            displayedAuxLabel = auxParts[0];
+        } else if (auxParts.length === 2) {
+            displayedAuxLabel = auxParts[1];
+        } else if (auxParts.length === 3) {
+            displayedAuxLabel = auxParts[2];
+        } else {
+            displayedAuxLabel = 'No AUX available';
+        }
+
+        updateAuxSelection();
+
+        const timerElement = displayTimer();
+        const timerId = setInterval(() => {
+            const elapsedTime = calculateTimeSpent(startTime);
+            timerElement.textContent = `${displayedAuxLabel} : ${formatTime(elapsedTime)}`;
+            timerElement.title = `Current AUX: ${auxLabel}`;
+            timerElement.style.color = 'black';
+        }, 1000);
+
+        localStorage.setItem('auxTimerId', timerId.toString());
+    }
+  restoreSelections();
+}
+
+function updateAuxSelection(auxLabel) {
+    if (!auxLabel) return;
+
+    const parts = auxLabel.split(' - ');
+    const l1Value = parts[0];
+    const l2Value = parts[1] !== 'N/A' ? parts[1] : '';
+    const l3Value = parts[2] !== 'N/A' ? parts[2] : '';
+
+    const auxL1 = document.getElementById('aux-l1');
+    const auxL2Container = document.getElementById('aux-l2-container');
+    const auxL3Container = document.getElementById('aux-l3-container');
+    if (auxL1 && l1Value) {
+        auxL1.value = Object.keys(l1Names).find(key => l1Names[key] === l1Value);
+        auxL1.dispatchEvent(new Event('change'));
+    }
+
+    setTimeout(() => {
+        const auxL2 = document.getElementById('aux-l2');
+        if (auxL2 && l2Value) {
+            auxL2.value = l2Value;
+            auxL2.dispatchEvent(new Event('change'));
+        }
+
+        setTimeout(() => {
+            const auxL3 = document.getElementById('aux-l3');
+            if (auxL3 && l3Value) {
+                auxL3.value = l3Value;
+                auxL3.dispatchEvent(new Event('change'));
+            }
+        }, 100);
+    }, 100);
+}
+
+function updateTimerDisplay(auxLabel, elapsedTime) {
+    const timerElement = displayTimer();
+
+    if (timerElement) {
+        const cleanedAuxLabel = auxLabel.replace(/\s*-\s*N\/A\s*/g, '').trim();
+        const auxParts = cleanedAuxLabel.split(' - ').filter(part => part.trim() !== '');
+
+        let displayedAuxLabel = '';
+
+        if (auxParts.length === 1) {
+            displayedAuxLabel = auxParts[0];
+        } else if (auxParts.length === 2) {
+            displayedAuxLabel = auxParts[1];
+        } else if (auxParts.length === 3) {
+            displayedAuxLabel = auxParts[2];
+        } else {
+            displayedAuxLabel = 'No AUX available';
+        }
+        timerElement.textContent = `${displayedAuxLabel} : ${formatTime(elapsedTime)}`;
+        timerElement.title = `Current AUX: ${cleanedAuxLabel || 'No AUX available'}`;
+    } else {
+        console.error('Timer element not found.');
+    }
+}
+
+// Storage event listener with debounce
+window.addEventListener('storage', function(event) {
+    if (event.key === 'auxState') {
+        const auxState = JSON.parse(event.newValue);
+        if (auxState) {
+            cleanupTimer();
+            const startTime = auxState.startTime;
+            const elapsedTime = calculateTimeSpent(auxState.startTime);
+            const auxLabel = auxState.auxLabel;
+            const timerElement = displayTimer();
+
+            updateAuxSelection(auxLabel);
+            updateTimerDisplay(auxLabel, elapsedTime);
+
+            requestAnimationFrame(() => updateTimer(startTime, auxLabel, timerElement));
+        }
+    } else if (event.key === 'auxChange') {
+        const data = JSON.parse(event.newValue);
+        if (data && data.action === 'startTimer') {
+            const auxState = JSON.parse(localStorage.getItem('auxState'));
+            if (auxState && auxState.timestamp === data.timestamp) {
+                updateAuxSelection(data.auxLabel);
+            }
+        } else if (data && data.action === 'stopTimer') {
+            cleanupTimer();
+            updateTimerDisplay('', 0);
+        }
+    }
+});
+
+// Cleanup on page unload
+window.addEventListener('unload', () => {
+    cleanupTimer();
+    if (timerUpdateDebounce) {
+        clearTimeout(timerUpdateDebounce);
+    }
+});
+
+//Function to ensure proper cleanup when switching AUX states
+function handleAuxStateChange(newAuxLabel) {
+    const prevState = JSON.parse(localStorage.getItem('auxState'));
+    const now = Date.now();
+
+    if (prevState) {
+        const timeSpent = calculateTimeSpent(prevState.startTime);
+        saveAUXData({
+            auxLabel: prevState.auxLabel,
+            timeSpent: timeSpent,
+            date: formatDate(new Date()),
+            projectTitle: localStorage.getItem('projectTitle-' + prevState.auxLabel),
+            relatedAudits: localStorage.getItem('relatedAudits-' + prevState.auxLabel),
+            areYouPL: localStorage.getItem('areYouPL-' + prevState.auxLabel),
+            comment: localStorage.getItem('comment-' + prevState.auxLabel)
+        });
+    }
+
+    cleanupTimer();
+    startAUXTimer(newAuxLabel);
+}
+
+    injectAuthStyles();
+    addFileInput();
+    restoreTimer();
+    startLateTimer();
+    checkLoginStatus();
+///////////////////////////////////////////////////////////////
+//DOM content loaded
+document.addEventListener('DOMContentLoaded', () => {
+    injectAuthStyles();
+    cleanupTimer();
+    restoreTimer();
+    addFileInput();
+    startLateTimer();
+    checkLoginStatus();
+    restoreSelections();
+    const auxState = JSON.parse(localStorage.getItem('auxState'));
+    if (auxState && auxState.auxLabel) {
+        updateAuxSelection(auxState.auxLabel);
+    }
+});
+
+    document.addEventListener('change', function(event) {
+        const auxLabel = event.target.value;
+        if (event.target && event.target.id === 'aux-label') {
+            if (auxLabel) {
+                startAUXTimer(auxLabel);
+            } else {
+                stopAUXTimer();
+            }
+        }
+    });
+
+//Quotes and Version
+const versionText = document.createElement('div');
+versionText.id = 'version-text';
+versionText.style.position = 'absolute';
+versionText.style.bottom = '10px';
+versionText.style.right = '10px';
+versionText.style.color = 'white';
+versionText.style.cursor = 'pointer';
+versionText.style.fontSize = '12px';
+versionText.innerText = `v${currentVersion}`;
+
+const widget = document.getElementById('aux-widget');
+widget.appendChild(versionText);
+
+const gistURL = "https://gist.githubusercontent.com/Mofi-l/878a781fdb73476ad6751c81834badb9/raw/bcdf6e2dbe6375e0ee2b30014d9c9d99b9aeea00/quotes.json";
+
+versionText.addEventListener('mouseenter', () => {
+    fetch(gistURL)
+        .then(response => response.json())
+        .then(data => {
+            const randomQuote = data[Math.floor(Math.random() * data.length)];
+            versionText.setAttribute('title', randomQuote);
+        })
+        .catch(err => {
+            console.error('Failed to fetch quotes:', err);
+            versionText.setAttribute('title', 'Error fetching quote.');
+        });
+});
+})();
+            function createParticles() {
+                const particles = document.createElement('div');
+                particles.className = 'particles';
+                
+                for (let i = 0; i < 50; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.width = Math.random() * 5 + 'px';
+                    particle.style.height = particle.style.width;
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.top = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 10 + 's';
+                    particles.appendChild(particle);
+                }
+                
+                document.body.appendChild(particles);
+            }
+
+            // Create animated lines
+            function createLines() {
+                const lines = document.createElement('div');
+                lines.className = 'lines';
+                
+                for (let i = 0; i < 20; i++) {
+                    const line = document.createElement('div');
+                    line.className = 'line';
+                    line.style.left = Math.random() * 100 + '%';
+                    line.style.animationDelay = Math.random() * 5 + 's';
+                    lines.appendChild(line);
+                }
+                
+                document.body.appendChild(lines);
+            }
+
+            // Initialize background effects
+            document.addEventListener('DOMContentLoaded', () => {
+                const gradientBg = document.createElement('div');
+                gradientBg.className = 'gradient-bg';
+                document.body.appendChild(gradientBg);
+
+                const glassOverlay = document.createElement('div');
+                glassOverlay.className = 'glass-overlay';
+                document.body.appendChild(glassOverlay);
+
+                createParticles();
+                createLines();
+            });
+        </script>
+    </style>
+</head>
+<body>
+    <!-- Your existing content -->
+</body>
